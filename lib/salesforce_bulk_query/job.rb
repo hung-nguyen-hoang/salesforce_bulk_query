@@ -19,8 +19,7 @@ module SalesforceBulkQuery
       path = "job"
       headers = Hash['Content-Type' => 'application/xml; charset=utf-8']
 
-      response = @connection.post_xml(nil, path, xml, headers)
-      response_parsed = XmlSimple.xml_in(response)
+      response_parsed = @connection.post_xml(path, xml, headers)
       @job_id = response_parsed['id'][0]
     end
   end

@@ -1,4 +1,6 @@
 require 'salesforce_bulk_query/connection'
+require 'salesforce_bulk_query/job'
+
 
 module SalesforceBulkQuery
 
@@ -7,14 +9,21 @@ module SalesforceBulkQuery
 
     def initialize(client, api_version=nil)
       api_version ||= @@DEFAULT_API_VERSION
-      @connection = SalesforceBulkApi::Connection.new(client, api_version)
+      @connection = SalesforceBulkQuery::Connection.new(client, api_version)
+    end
+
+    def instance_url
+      # make sure it ends with /
+      url = @connection.client.instance_url
+      url += '/' if url[-1] != '/'
+      return url
     end
 
     def query(sobject, soql)
       # TODO kdyz je v soqlu where nebo order by tak nasrat
 
       # create the job
-      job = SalesforceBulkApi::Job.new(sobject, @connection)
+      job = SalesforceBulkQuery::Job.new(sobject, @connection)
       job.create_job
 
       # get the date when the first was created

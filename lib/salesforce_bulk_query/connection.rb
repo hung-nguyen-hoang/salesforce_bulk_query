@@ -1,32 +1,39 @@
+require 'xmlsimple'
+
 module SalesforceBulkQuery
   class Connection
-    def initialize(client, api_version)
+    def initialize(client, api_version, logger=nil)
       @client=client
+      @logger = logger
 
       @@API_VERSION = api_version
       @@PATH_PREFIX = "/services/async/#{@@API_VERSION}/"
     end
 
-    def post_xml(host, path, xml, headers)
-require 'pry'; binding.pry
-      host = host || @@INSTANCE_HOST
-      if host != @@LOGIN_HOST # Not login, need to add session id to header
-        headers['X-SFDC-Session'] = @session_id;
-        path = "#{@@PATH_PREFIX}#{path}"
-      end
+    attr_reader :client
+
+    def post_xml(path, xml, headers)
+      path = "#{@@PATH_PREFIX}#{path}"
+      headers['X-SFDC-Session'] = @client.options[:oauth_token]
+
+      # do the request
       i = 0
       begin
-        https(host).post(path, xml, headers).body
-      rescue
+        response = @client.post(path, xml, headers)
+      rescue => e
         i += 1
         if i < 3
-          puts "Request fail #{i}: Retrying #{path}"
+          logger.warn "Retrying, got error: #{e}, #{e.backtrace}"
           retry
         else
-          puts "FATAL: Request to #{path} failed three times."
+          logger.error "Failed 3 times, last error: #{e}, #{e.backtrace}"
           raise
         end
       end
+
+      response_parsed = XmlSimple.xml_in(response.body)
+require 'pry'; binding.pry
+      return response_parsed
     end
   end
 end
