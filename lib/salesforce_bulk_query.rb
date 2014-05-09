@@ -7,9 +7,10 @@ module SalesforceBulkQuery
   class Api
     @@DEFAULT_API_VERSION = '29.0'
 
-    def initialize(client, api_version=nil)
-      api_version ||= @@DEFAULT_API_VERSION
+    def initialize(client, options)
+      api_version = options[:api_version] || @@DEFAULT_API_VERSION
       @connection = SalesforceBulkQuery::Connection.new(client, api_version)
+      @logger = options[:logger]
     end
 
     def instance_url
@@ -19,22 +20,29 @@ module SalesforceBulkQuery
       return url
     end
 
-    def query(sobject, soql)
+    BATCH_COUNT = 15
+    DEFAULT_MIN_CREATED = "1999-01-01T00:00:00.000Z"
+
+    def start_query(sobject, soql)
       # TODO kdyz je v soqlu where nebo order by tak nasrat
 
       # create the job
       job = SalesforceBulkQuery::Job.new(sobject, @connection)
-      job.create_job
 
       # get the date when the first was created
-      min_created_resp = @connection.client.query("SELECT CreatedDate FROM #{sobject} ORDER BY CreatedDate LIMIT 1")
       min_created = nil
-      min_created_resp.each {|s| min_created = s[:CreatedDate]}
+      begin
+        min_created_resp = @connection.client.query("SELECT CreatedDate FROM #{sobject} ORDER BY CreatedDate LIMIT 1")
+        min_created_resp.each {|s| min_created = s[:CreatedDate]}
+      rescue Faraday::Error::TimeoutError => e
+        @logger.warn "Timeout getting the oldest object for #{sobject}. Error: #{e}. Using the default value" if @logger
+        min_created = DEFAULT_MIN_CREATED
+      end
 
       # generate intervals
       start = DateTime.parse(min_created)
       stop = DateTime.now
-      step_size = (stop - start) / BATHES
+      step_size = (stop - start) / BATCH_COUNT
 
       interval_beginings = start.step(stop, step_size).map{|f|f}
       interval_ends = interval_beginings.clone
@@ -43,16 +51,14 @@ module SalesforceBulkQuery
 
       interval_beginings.zip(interval_ends).each do |from, to|
 
-        soql = query + " WHERE CreatedDate >= #{from} AND CreatedDate <= #{to}"
-        puts "Adding soql #{soql} as a batch to job"
-        job.add_query(soql)
+        soql_extended = "#{soql} WHERE CreatedDate >= #{from} AND CreatedDate <= #{to}"
+        puts "Adding soql #{soql_extended} as a batch to job"
+        job.add_query(soql_extended)
       end
 
-      close_response = job.close_job
-      batch_responses = job.get_job_result(true, timeout)
+      job.close_job
 
-
-      return close_response.merge({"batches" => batch_responses})
+      return job
     end
   end
 end
