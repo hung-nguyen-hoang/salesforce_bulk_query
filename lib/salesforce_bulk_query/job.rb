@@ -1,13 +1,18 @@
+require "salesforce_bulk_query/batch"
+
 module SalesforceBulkQuery
   class Job
     @@operation = 'query'
     @@xml_header = '<?xml version="1.0" encoding="utf-8" ?>'
+    JOB_TIME_LIMIT = 30
+    BATCH_COUNT = 15
+
 
     def initialize(sobject, connection)
       @sobject = sobject
       @connection = connection
-      @batch_ids = []
-      create_job
+      @batches = []
+      @unfinished_batches = nil
     end
 
     attr_reader :job_id
@@ -25,12 +30,41 @@ module SalesforceBulkQuery
       @job_id = response_parsed['id'][0]
     end
 
-    def add_query(query)
-      path = "job/#{@job_id}/batch/"
+    def generate_batches(soql, start, stop)
+      step_size = (stop - start) / BATCH_COUNT
 
-      response_parsed = @connection.post_xml(path, query, {:csv_content_type => true})
-      # add the batch id to the list
-      @batch_ids << response_parsed['id'][0]
+      interval_beginings = start.step(stop - step_size, step_size).map{|f|f}
+      interval_ends = interval_beginings.clone
+      interval_ends.shift
+      interval_ends.push(stop)
+require 'pry'; binding.pry
+
+      interval_beginings.zip(interval_ends).each do |from, to|
+
+        soql_extended = "#{soql} WHERE CreatedDate >= #{from} AND CreatedDate < #{to}"
+        puts "Adding soql #{soql_extended} as a batch to job"
+
+        add_query(soql_extended,
+          :start => from,
+          :stop => to
+        )
+      end
+    end
+
+    def add_query(query, options)
+      # create and create a batch
+      batch = SalesforceBulkQuery::Batch.new(
+        :sobject => @sobject,
+        :soql => query,
+        :job_id => @job_id,
+        :connection => @connection,
+        :start => options[:start],
+        :stop => options[:stop]
+      )
+      batch.create
+
+      # add the batch to the list
+      @batches.push(batch)
     end
 
     def close_job
@@ -41,51 +75,65 @@ module SalesforceBulkQuery
       path = "job/#{@job_id}"
 
       response_parsed = @connection.post_xml(path, xml)
+      @job_closed = Time.now
     end
 
-    def check_job_status
+    def check_status
       path = "job/#{@job_id}"
       response_parsed = @connection.get_xml(path)
       @finished = Integer(response_parsed["numberBatchesCompleted"][0]) == Integer(response_parsed["numberBatchesTotal"][0])
       return {
-        "finished" => @finished,
-        "some_failed" => Integer(response_parsed["numberRecordsFailed"][0]) > 0,
-        "response" => response_parsed
+        :finished => @finished,
+        :some_failed => Integer(response_parsed["numberRecordsFailed"][0]) > 0,
+        :response => response_parsed
       }
     end
 
-    def get_batch_result(batch_id, directory_path)
-      # request to get the result id
-      path = "job/#{@job_id}/batch/#{batch_id}/result"
-
-      response_parsed = @connection.get_xml(path)
-
-      # request to get the actual results
-      result_id = response_parsed["result"][0]
-      path2 = "job/#{@job_id}/batch/#{batch_id}/result/#{result_id}"
-
-      response = @connection.get_xml(path2, :skip_parsing => true)
-
-      # write it to a file
-      filename = File.join(directory_path, "#{@sobject}-#{batch_id}.csv")
-      File.open(filename, 'w') { |file| file.write(response) }
-
-      return filename
-    end
-
-    def get_job_results(options)
-      if !@finished
-        raise "the job #{@job_id} isn't finished yet"
-      end
+    # downloads whatever is available, returns as unfinished whatever is not
+    def get_results(options)
+      filenames = []
+      unfinished_batches = []
 
       # get result for each batch in the job
-      result_filenames = []
-      @batch_ids.each do |batch_id|
-        batch_result = get_batch_result(batch_id, options[:directory_path])
-        result_filenames.push(batch_result)
+      @batches.each do |batch|
+        batch_status = batch.check_status
+
+        # if the result is ready
+        if batch_status[:finished]
+
+          # download the result
+          filename = batch.get_result(options[:directory_path])
+          filenames.push(filename)
+        else
+          # otherwise put it to unfinished
+          unfinished_batches.push(batch)
+        end
+      end
+      @unfinished_batches = unfinished_batches
+
+      return {
+        :filenames => filenames,
+        :unfinished_batches => unfinished_batches
+      }
+    end
+
+    def get_unfinished_batches
+      # if we didn't reach limit yet, do nothing
+      # if all done, do nothing
+      if (Time.now - @job_closed < JOB_TIME_LIMIT) || @finished
+        return []
       end
 
-      return result_filenames
+      unfinished = []
+
+      # check the status of each batch, if not done, divide it
+      @batches.each do |batch|
+        batch_status = batch.check_status
+        if ! batch_status[:finished]
+          unfinished.push(batch)
+        end
+      end
+      return unfinished
     end
   end
 end
