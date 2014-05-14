@@ -4,7 +4,7 @@ module SalesforceBulkQuery
   class Job
     @@operation = 'query'
     @@xml_header = '<?xml version="1.0" encoding="utf-8" ?>'
-    JOB_TIME_LIMIT = 30
+    JOB_TIME_LIMIT = 10 * 60
     BATCH_COUNT = 15
 
 
@@ -37,7 +37,6 @@ module SalesforceBulkQuery
       interval_ends = interval_beginings.clone
       interval_ends.shift
       interval_ends.push(stop)
-require 'pry'; binding.pry
 
       interval_beginings.zip(interval_ends).each do |from, to|
 
@@ -81,7 +80,8 @@ require 'pry'; binding.pry
     def check_status
       path = "job/#{@job_id}"
       response_parsed = @connection.get_xml(path)
-      @finished = Integer(response_parsed["numberBatchesCompleted"][0]) == Integer(response_parsed["numberBatchesTotal"][0])
+      @completed = Integer(response_parsed["numberBatchesCompleted"][0])
+      @finished = @completed == Integer(response_parsed["numberBatchesTotal"][0])
       return {
         :finished => @finished,
         :some_failed => Integer(response_parsed["numberRecordsFailed"][0]) > 0,
@@ -117,23 +117,15 @@ require 'pry'; binding.pry
       }
     end
 
-    def get_unfinished_batches
+    def get_available_results(options)
       # if we didn't reach limit yet, do nothing
       # if all done, do nothing
-      if (Time.now - @job_closed < JOB_TIME_LIMIT) || @finished
-        return []
+      # if none of the batches finished, same thing
+      if (Time.now - @job_closed < JOB_TIME_LIMIT) || @finished || @completed == 0
+        return nil
       end
 
-      unfinished = []
-
-      # check the status of each batch, if not done, divide it
-      @batches.each do |batch|
-        batch_status = batch.check_status
-        if ! batch_status[:finished]
-          unfinished.push(batch)
-        end
-      end
-      return unfinished
+      return get_results(options)
     end
   end
 end

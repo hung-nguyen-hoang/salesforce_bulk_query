@@ -41,11 +41,9 @@ module SalesforceBulkQuery
         raise "batch not finished yet, trying to get result: #{path}"
       end
 
-      response = @connection.get_xml(path, :skip_parsing => true)
-
       # write it to a file
       filename = File.join(directory_path, "#{@sobject}-#{@batch_id}.csv")
-      File.open(filename, 'w') { |file| file.write(response) }
+      @connection.get_to_file(path, filename)
 
       return filename
     end

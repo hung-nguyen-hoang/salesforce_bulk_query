@@ -1,4 +1,5 @@
 require 'xmlsimple'
+require 'net/http'
 
 module SalesforceBulkQuery
   class Connection
@@ -20,12 +21,15 @@ module SalesforceBulkQuery
     end
 
     def parse_xml(xml)
+      parsed = nil
       begin
-        return XmlSimple.xml_in(xml)
+        parsed = XmlSimple.xml_in(xml)
       rescue => e
         @logger.error "Error parsing xml: #{xml}\n#{e}\n#{e.backtrace}"
         raise
       end
+
+      return parsed
     end
 
     def post_xml(path, xml, options={})
@@ -35,7 +39,14 @@ module SalesforceBulkQuery
       response = nil
       # do the request
       with_retries do
-        response = @client.post(path, xml, headers.merge(session_header))
+        begin
+          response = @client.post(path, xml, headers.merge(session_header))
+        rescue JSON::ParserError => e
+          if e.message.index('ExceededQuota')
+            raise "You've run out of sfdc batch api quota. Original error: #{e}\n #{e.backtrace}"
+          end
+          raise e
+        end
       end
 
       return parse_xml(response.body)
@@ -51,6 +62,28 @@ module SalesforceBulkQuery
       end
 
       return options[:skip_parsing] ? response.body : parse_xml(response.body)
+    end
+
+    def get_to_file(path, filename)
+      path = "#{@@PATH_PREFIX}#{path}"
+      uri = URI.parse( @client.options[:instance_url])
+      # open a file
+      http = Net::HTTP.new(uri.host, uri.port)
+      http.use_ssl = true
+require 'pry'; binding.pry
+
+      # do the request
+      http.request_get(path, XML_REQUEST_HEADER.merge(session_header)) do |res|
+
+        File.open(filename, 'w') do |file|
+          # write the body to the file by chunks
+          res.read_body do |segment|
+require 'pry'; binding.pry
+
+            file.write(segment)
+          end
+        end
+      end
     end
 
     def with_retries
