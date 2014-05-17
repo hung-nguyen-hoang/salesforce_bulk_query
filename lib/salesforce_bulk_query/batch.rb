@@ -32,6 +32,10 @@ module SalesforceBulkQuery
       }
     end
 
+    def get_filename
+      return "#{@sobject}_#{@batch_id}_#{@start}-#{@stop}.csv"
+    end
+
     def get_result(directory_path)
 
       # request to get the actual results
@@ -42,7 +46,7 @@ module SalesforceBulkQuery
       end
 
       # write it to a file
-      filename = File.join(directory_path, "#{@sobject}-#{@batch_id}.csv")
+      filename = File.join(directory_path, get_filename)
       @connection.get_to_file(path, filename)
 
       return filename

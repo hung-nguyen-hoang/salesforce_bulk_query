@@ -3,9 +3,10 @@ require 'net/http'
 
 module SalesforceBulkQuery
   class Connection
-    def initialize(client, api_version, logger=nil)
+    def initialize(client, api_version, logger=nil, filename_prefix=nil)
       @client=client
       @logger = logger
+      @filename_prefix = filename_prefix
 
       @@API_VERSION = api_version
       @@PATH_PREFIX = "/services/async/#{@@API_VERSION}/"
@@ -70,15 +71,17 @@ module SalesforceBulkQuery
       # open a file
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = true
-require 'pry'; binding.pry
+      headers = XML_REQUEST_HEADER.merge(session_header)
+      @logger.info "Doing GET to #{path}, headers #{headers}" if @logger
 
       # do the request
-      http.request_get(path, XML_REQUEST_HEADER.merge(session_header)) do |res|
+      http.request_get(path, headers) do |res|
+
+        @logger.info "Got response #{res.inspect}, reading response body by chunks and writing to #{filename}" if @logger
 
         File.open(filename, 'w') do |file|
           # write the body to the file by chunks
           res.read_body do |segment|
-require 'pry'; binding.pry
 
             file.write(segment)
           end

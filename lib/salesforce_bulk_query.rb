@@ -13,7 +13,7 @@ module SalesforceBulkQuery
 
       # use our own logging middleware if logger passed
       if options[:logger]
-        client.middleware.use(SalesforceBulkQuery::Logger,options[:logger], options)
+        client.middleware.use(SalesforceBulkQuery::Logger, options[:logger], options)
         # switch off the normal logging
         restforce_class = client.class.parent.parent
         restforce_class.log = false if restforce_class.respond_to?(:log)
@@ -21,7 +21,7 @@ module SalesforceBulkQuery
       end
 
       # initialize connection
-      @connection = SalesforceBulkQuery::Connection.new(client, api_version)
+      @connection = SalesforceBulkQuery::Connection.new(client, api_version, @logger, options[:filename_prefix])
     end
 
     def instance_url
@@ -44,7 +44,7 @@ module SalesforceBulkQuery
       start_time = Time.now
 
       # start the machinery
-      query = start_query(sobject, soql)
+      query = start_query(sobject, soql, options)
       results = nil
 
       loop do
@@ -61,7 +61,7 @@ module SalesforceBulkQuery
         end
 
         # if we've run out of time limit, go away
-        if Time.now - start_time > QUERY_TIME_LIMIT
+        if Time.now - start_time > time_limit
           @logger.warn "Ran out of time limit, downloading what's available and terminating" if @logger
 
           # download what's available
@@ -82,9 +82,9 @@ module SalesforceBulkQuery
       return results
     end
 
-    def start_query(sobject, soql)
+    def start_query(sobject, soql, options={})
       # create the query, start it and return it
-      query = SalesforceBulkQuery::Query.new(sobject, soql, @connection, :logger => @logger)
+      query = SalesforceBulkQuery::Query.new(sobject, soql, @connection, {:logger => @logger}.merge(options))
       query.start
       return query
     end

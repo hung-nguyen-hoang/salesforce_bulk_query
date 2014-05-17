@@ -8,9 +8,10 @@ module SalesforceBulkQuery
     BATCH_COUNT = 15
 
 
-    def initialize(sobject, connection)
+    def initialize(sobject, connection, logger=nil)
       @sobject = sobject
       @connection = connection
+      @logger = logger
       @batches = []
       @unfinished_batches = nil
     end
@@ -30,7 +31,24 @@ module SalesforceBulkQuery
       @job_id = response_parsed['id'][0]
     end
 
-    def generate_batches(soql, start, stop)
+    def get_extended_soql(soql, from, to)
+      return "#{soql} WHERE CreatedDate >= #{from} AND CreatedDate < #{to}"
+    end
+
+    def generate_batches(soql, start, stop, single_batch=false)
+      # if there's just one batch wanted, add it and we're done
+      if single_batch
+        soql_extended = get_extended_soql(soql, start, stop)
+        @logger.info "Adding soql #{soql_extended} as a batch to job" if @logger
+
+        add_query(soql_extended,
+          :start => start,
+          :stop => stop
+        )
+        return
+      end
+
+      # if there's more, generate the time intervals and generate the batches
       step_size = (stop - start) / BATCH_COUNT
 
       interval_beginings = start.step(stop - step_size, step_size).map{|f|f}
@@ -40,8 +58,8 @@ module SalesforceBulkQuery
 
       interval_beginings.zip(interval_ends).each do |from, to|
 
-        soql_extended = "#{soql} WHERE CreatedDate >= #{from} AND CreatedDate < #{to}"
-        puts "Adding soql #{soql_extended} as a batch to job"
+        soql_extended = get_extended_soql(soql, from, to)
+        @logger.info "Adding soql #{soql_extended} as a batch to job" if @logger
 
         add_query(soql_extended,
           :start => from,
