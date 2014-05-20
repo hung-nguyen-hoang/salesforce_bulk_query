@@ -1,7 +1,10 @@
 require 'salesforce_bulk_query/job'
 
 module SalesforceBulkQuery
+
+  # Abstraction of a single user-given query. It contains multiple jobs, is tied to a specific connection
   class Query
+
     # if no created_to is given we use the current time with this offset
     # subtracted (to make sure the freshest changes that can be inconsistent
     # aren't there) It's in minutes
@@ -23,10 +26,10 @@ module SalesforceBulkQuery
 
     DEFAULT_MIN_CREATED = "1999-01-01T00:00:00.000Z"
 
-    # creates the first job, divides the query to subqueries, puts all the subqueries as batches to the job
+    # Creates the first job, divides the query to subqueries, puts all the subqueries as batches to the job
     def start
       # order by and where not allowed
-      if @soql =~ /WHERE/i || @soql =~ /ORDER BY/i
+      if (!@single_batch) && (@soql =~ /WHERE/i || @soql =~ /ORDER BY/i)
         raise "You can't have WHERE or ORDER BY in your soql. If you want to download just specific date range use created_from / created_to"
       end
 
@@ -60,7 +63,7 @@ module SalesforceBulkQuery
     end
 
 
-    # check statuses of all jobs
+    # Check statuses of all jobs
     def check_status
       all_done = true
       job_statuses = []
@@ -77,7 +80,8 @@ module SalesforceBulkQuery
       }
     end
 
-    # get results for all jobs
+    # Get results for all jobs
+    # @param options[:directory_path]
     def get_results(options)
       all_job_results = []
       job_result_filenames = []
@@ -98,7 +102,7 @@ module SalesforceBulkQuery
       }
     end
 
-    # restarts unfinished batches in a job, creating new jobs
+    # Restart unfinished batches in all jobs in progress, creating new jobs
     # downloads results for finished batches
     def get_result_or_restart(options)
       new_jobs = []

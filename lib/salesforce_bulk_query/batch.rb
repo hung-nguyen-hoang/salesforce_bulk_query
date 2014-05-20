@@ -1,4 +1,8 @@
+require 'tmpdir'
+
 module SalesforceBulkQuery
+  # Represents a Salesforce api batch. Batch contains a single subquery.
+  # Many batches are contained in a Job.
   class Batch
     def initialize(options)
       @sobject = options[:sobject]
@@ -11,6 +15,7 @@ module SalesforceBulkQuery
 
     attr_reader :soql, :start, :stop
 
+    # Do the api request
     def create
       path = "job/#{@job_id}/batch/"
 
@@ -36,7 +41,7 @@ module SalesforceBulkQuery
       return "#{@sobject}_#{@batch_id}_#{@start}-#{@stop}.csv"
     end
 
-    def get_result(directory_path)
+    def get_result(directory_path=nil)
 
       # request to get the actual results
       path = "job/#{@job_id}/batch/#{@batch_id}/result/#{@result_id}"
@@ -44,6 +49,8 @@ module SalesforceBulkQuery
       if !@result_id
         raise "batch not finished yet, trying to get result: #{path}"
       end
+
+      directory_path || = Dir.mktmpdir
 
       # write it to a file
       filename = File.join(directory_path, get_filename)

@@ -1,8 +1,8 @@
-# custom logger logging just small enough response bodies
 require 'forwardable'
 require 'faraday'
 
 module SalesforceBulkQuery
+  # Custom logger for Restforce that doesn't log tons of data.
   class Logger < Faraday::Response::Middleware
     extend Forwardable
 

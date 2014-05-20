@@ -2,12 +2,16 @@ require 'salesforce_bulk_query/connection'
 require 'salesforce_bulk_query/query'
 require 'salesforce_bulk_query/logger'
 
-
+# Module where all the stuff is happening
 module SalesforceBulkQuery
 
+  # Abstracts the whole library, class the user interacts with
   class Api
     @@DEFAULT_API_VERSION = '29.0'
 
+    # Constructor
+    # @param client [Restforce] An instance of the Restforce client, that is used internally to access Salesforce api
+    # @param options
     def initialize(client, options)
       api_version = options[:api_version] || @@DEFAULT_API_VERSION
 
@@ -24,6 +28,7 @@ module SalesforceBulkQuery
       @connection = SalesforceBulkQuery::Connection.new(client, api_version, @logger, options[:filename_prefix])
     end
 
+    # Get the Salesforce instance URL
     def instance_url
       # make sure it ends with /
       url = @connection.client.instance_url
@@ -34,8 +39,11 @@ module SalesforceBulkQuery
     CHECK_INTERVAL = 10
     QUERY_TIME_LIMIT = 60 * 60 * 2 # two hours
 
-    # blocking method - waits until the query is resolved
+    # Query the Salesforce API. It's a blocking method - waits until the query is resolved
     # can take quite some time
+    # @param sobject Salesforce object, e.g. "Opportunity"
+    # @param soql SOQL query, e.g. "SELECT Name FROM Opportunity"
+    # @return hash with :filenames and other useful stuff
     def query(sobject, soql, options={})
       # TODO default for options[:directory_path]
       check_interval = options[:check_interval] || CHECK_INTERVAL
@@ -82,6 +90,9 @@ module SalesforceBulkQuery
       return results
     end
 
+    # Start the query (synchronous method)
+    # @params see #query
+    # @return Query instance with the running query
     def start_query(sobject, soql, options={})
       # create the query, start it and return it
       query = SalesforceBulkQuery::Query.new(sobject, soql, @connection, {:logger => @logger}.merge(options))

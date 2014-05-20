@@ -2,6 +2,9 @@ require 'xmlsimple'
 require 'net/http'
 
 module SalesforceBulkQuery
+
+  # Connection to the Salesforce API
+  # shared in all classes that do some requests
   class Connection
     def initialize(client, api_version, logger=nil, filename_prefix=nil)
       @client=client
@@ -73,6 +76,10 @@ module SalesforceBulkQuery
       http.use_ssl = true
       headers = XML_REQUEST_HEADER.merge(session_header)
       @logger.info "Doing GET to #{path}, headers #{headers}" if @logger
+
+      if @filename_prefix
+        filename = "#{@filename_prefix}_#{filename}"
+      end
 
       # do the request
       http.request_get(path, headers) do |res|

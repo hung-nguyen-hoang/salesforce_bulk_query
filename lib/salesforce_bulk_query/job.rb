@@ -1,6 +1,9 @@
 require "salesforce_bulk_query/batch"
 
 module SalesforceBulkQuery
+
+  # Represents a Salesforce bulk api job, contains multiple batches.
+  # Many jobs contained in Query
   class Job
     @@operation = 'query'
     @@xml_header = '<?xml version="1.0" encoding="utf-8" ?>'
@@ -18,7 +21,7 @@ module SalesforceBulkQuery
 
     attr_reader :job_id
 
-
+    # Do the API request
     def create_job(csv=true)
       content_type = csv ? "CSV" : "XML"
       xml = "#{@@xml_header}<jobInfo xmlns=\"http://www.force.com/2009/06/asyncapi/dataload\">"
