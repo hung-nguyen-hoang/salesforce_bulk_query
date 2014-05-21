@@ -111,5 +111,14 @@ module SalesforceBulkQuery
         end
       end
     end
+
+    def to_log
+      return {
+        :client => "Restforce asi",
+        :filename_prefix => @filename_prefix,
+        :api_version => @@API_VERSION,
+        :path_prefix => @@PATH_PREFIX
+      }
+    end
   end
 end

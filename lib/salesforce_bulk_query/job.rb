@@ -16,7 +16,7 @@ module SalesforceBulkQuery
       @connection = connection
       @logger = logger
       @batches = []
-      @unfinished_batches = nil
+      @unfinished_batches = []
     end
 
     attr_reader :job_id
@@ -71,7 +71,7 @@ module SalesforceBulkQuery
       end
     end
 
-    def add_query(query, options)
+    def add_query(query, options={})
       # create and create a batch
       batch = SalesforceBulkQuery::Batch.new(
         :sobject => @sobject,
@@ -111,7 +111,7 @@ module SalesforceBulkQuery
     end
 
     # downloads whatever is available, returns as unfinished whatever is not
-    def get_results(options)
+    def get_results(options={})
       filenames = []
       unfinished_batches = []
 
@@ -138,7 +138,7 @@ module SalesforceBulkQuery
       }
     end
 
-    def get_available_results(options)
+    def get_available_results(options={})
       # if we didn't reach limit yet, do nothing
       # if all done, do nothing
       # if none of the batches finished, same thing
@@ -147,6 +147,15 @@ module SalesforceBulkQuery
       end
 
       return get_results(options)
+    end
+
+    def to_log
+      return {
+        :sobject => @sobject,
+        :connection => @connection.to_log,
+        :batches => @batches.map {|b| b.to_log},
+        :unfinished_batches => @unfinished_batches.map {|b| b.to_log}
+      }
     end
   end
 end

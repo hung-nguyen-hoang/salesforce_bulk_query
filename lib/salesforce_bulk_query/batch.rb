@@ -11,6 +11,7 @@ module SalesforceBulkQuery
       @connection = options[:connection]
       @start = options[:start]
       @stop = options[:stop]
+      @@directory_path ||= Dir.mktmpdir
     end
 
     attr_reader :soql, :start, :stop
@@ -50,13 +51,25 @@ module SalesforceBulkQuery
         raise "batch not finished yet, trying to get result: #{path}"
       end
 
-      directory_path || = Dir.mktmpdir
+      directory_path ||= @@directory_path
 
       # write it to a file
       filename = File.join(directory_path, get_filename)
       @connection.get_to_file(path, filename)
 
       return filename
+    end
+
+    def to_log
+      return {
+        :sobject => @sobject,
+        :soql => @soql,
+        :job_id => @job_id,
+        :connection => @connection.to_log,
+        :start => @start,
+        :stop => @stop,
+        :directory_path => @@directory_path
+      }
     end
 
   end

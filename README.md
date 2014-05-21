@@ -5,6 +5,8 @@ A library for downloading data from Salesforce Bulk API. We only focus on queryi
 Derived from [Salesforce Bulk API](https://github.com/yatish27/salesforce_bulk_api)
 
 ## Basic Usage
+Before using the library, make sure you have the right account in your Salesforce organization that has access to API and that you won't run out of the [API limits]()
+
     require 'restforce'
     require 'salesforce_bulk_query'
 
@@ -38,6 +40,7 @@ Derived from [Salesforce Bulk API](https://github.com/yatish27/salesforce_bulk_a
     query = start_query("Task", "SELECT Id, Name FROM Task")
 
     # get a cofee
+    sleep(1234)
 
     # check the status
     status = query.check_status
@@ -48,7 +51,7 @@ Derived from [Salesforce Bulk API](https://github.com/yatish27/salesforce_bulk_a
 
 ## How it works
 
-The library uses the [Salesforce Bulk API](https://www.salesforce.com/us/developer/docs/api_asynch/index_Left.htm#CSHID=asynch_api_bulk_query.htm|StartTopic=Content%2Fasynch_api_bulk_query.htm|SkinName=webhelp). The given query is divided into 15 subqueries, according to the [limits](http://www.salesforce.com/us/developer/docs/api_asynchpre/index_Left.htm#CSHID=asynch_api_concepts_limits.htm|StartTopic=Content%2Fasynch_api_concepts_limits.htm|SkinName=webhelp). Each subquery is an interval based on the CreatedDate Salesforce field. The limits are passed to the API in SOQL queries. Subqueries are sent to the API as batches and added to a job. 
+The library uses the [Salesforce Bulk API](https://www.salesforce.com/us/developer/docs/api_asynch/index_Left.htm#CSHID=asynch_api_bulk_query.htm|StartTopic=Content%2Fasynch_api_bulk_query.htm|SkinName=webhelp). The given query is divided into 15 subqueries, according to the [limits](http://www.salesforce.com/us/developer/docs/api_asynchpre/Content/asynch_api_concepts_limits.htm#batch_proc_time_title). Each subquery is an interval based on the CreatedDate Salesforce field. The limits are passed to the API in SOQL queries. Subqueries are sent to the API as batches and added to a job. 
 
 The first interval starts with the date the first Salesforce object was created, we query Salesforce REST API for that. If this query times out, we use a constant. The last interval ends a few minutes before now to avoid consistency issues. Custom start and end can be passed - see Options.
 
@@ -63,11 +66,27 @@ There are a few optional settings you can pass to the `Api` methods:
 * `filename_prefix`: prefix applied to csv files
 * `directory_path`: custom direcotory path for CSVs, if omitted, a new temp directory is created
 * `check_interval`: how often the results should be checked in secs. 
-* `time_limit`: maximum time the query can take. If this time limit is exceeded, available results are downloaded and the list of subqueries that didn't finished is returned
+* `time_limit`: maximum time the query can take. If this time limit is exceeded, available results are downloaded and the list of subqueries that didn't finished is returned. In seconds. The limti should be understood as limit for waiting. When the limit is reached the function downloads data that is ready which can take some additonal time. 
 * `created_from`, `created_to`: limits for the CreatedDate field. Note that queries can't contain any WHERE statements as we're doing some manipulations to create subqueries and we don't want things to get too difficult. So this is the way to limit the query yourself. The format is like `"1999-01-01T00:00:00.000Z"`
 * `single_batch`: If true, the queries are not divided into subqueries as described above. Instead one batch job is created with the given query. 
 
 See specs for exact usage.
+
+## Logging
+    require 'logger'
+    require 'restforce'
+
+    # create the restforce client
+    restforce = Restforce.new(...)
+
+    # instantiate a logger and pass it to the Api constructor
+    logger = Logger.new(STDOUT)
+    bulk_api = SalesforceBulkQuery::Api.new(restforce, :logger => logger)
+
+    # switch off logging in Restforce so you don't get every message twice
+    Restforce.log = false
+
+If you're using Restforce as a client (which you probably are) and you want to do logging, Salesforce Bulk Query will use a custom logging middleware for Restforce. This is because the original logging middleware puts all API responses to log, which is not something you would like to do for a few gigabytes CSVs. When you use the :logger parameter it's recommended you swith off the default logging in Restforce, otherwise you'll get all messages twice. 
 
 ## Copyright
 

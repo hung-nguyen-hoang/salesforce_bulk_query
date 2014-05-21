@@ -19,6 +19,8 @@ Gem::Specification.new do |s|
 
   s.add_development_dependency 'multi_json'
   s.add_development_dependency 'restforce'
+  s.add_development_dependency 'rspec'
+  s.add_development_dependency 'pry'
 
 
   s.files = `git ls-files`.split($/)

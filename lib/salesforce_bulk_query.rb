@@ -12,16 +12,14 @@ module SalesforceBulkQuery
     # Constructor
     # @param client [Restforce] An instance of the Restforce client, that is used internally to access Salesforce api
     # @param options
-    def initialize(client, options)
+    def initialize(client, options={})
+      @logger = options[:logger]
+
       api_version = options[:api_version] || @@DEFAULT_API_VERSION
 
       # use our own logging middleware if logger passed
-      if options[:logger]
-        client.middleware.use(SalesforceBulkQuery::Logger, options[:logger], options)
-        # switch off the normal logging
-        restforce_class = client.class.parent.parent
-        restforce_class.log = false if restforce_class.respond_to?(:log)
-        @logger = options[:logger]
+      if @logger && client.respond_to?(:middleware)
+        client.middleware.use(SalesforceBulkQuery::Logger, @logger, options)
       end
 
       # initialize connection
@@ -45,7 +43,6 @@ module SalesforceBulkQuery
     # @param soql SOQL query, e.g. "SELECT Name FROM Opportunity"
     # @return hash with :filenames and other useful stuff
     def query(sobject, soql, options={})
-      # TODO default for options[:directory_path]
       check_interval = options[:check_interval] || CHECK_INTERVAL
       time_limit = options[:time_limit] || QUERY_TIME_LIMIT
 
@@ -64,7 +61,7 @@ module SalesforceBulkQuery
 
           # get the results and we're done
           results = query.get_results(:directory_path => options[:directory_path])
-          @logger.info "Query finished. Results: #{results}"
+          @logger.info "Query finished. Results: #{results_to_string(results)}" if @logger
           break
         end
 
@@ -77,13 +74,13 @@ module SalesforceBulkQuery
             :directory_path => options[:directory_path],
           )
 
-          @logger.info "Downloaded the following files: #{results[:filenames]} The following didn't finish in time: #{results[:unfinished_subqueries]}" if @logger
+          @logger.info "Downloaded the following files: #{results[:filenames]} The following didn't finish in time: #{results[:unfinished_subqueries]}. Results: #{results_to_string(results)}" if @logger
           break
         end
 
         # restart whatever needs to be restarted and sleep
         query.get_result_or_restart(:directory_path => options[:directory_path])
-        @logger.info "Sleeping" if @logger
+        @logger.info "Sleeping #{check_interval}" if @logger
         sleep(check_interval)
       end
 
@@ -98,6 +95,21 @@ module SalesforceBulkQuery
       query = SalesforceBulkQuery::Query.new(sobject, soql, @connection, {:logger => @logger}.merge(options))
       query.start
       return query
+    end
+
+    private
+    # create a hash with just the fields we want to show in logs
+    def results_to_string(results)
+      return results.merge({
+        :results => results[:results].map do |r|
+          r.merge({
+            :unfinished_batches => r[:unfinished_batches].map do |b|
+              b.to_log
+            end
+          })
+        end,
+        :done_jobs => results[:done_jobs].map {|j| j.to_log}
+      })
     end
   end
 end

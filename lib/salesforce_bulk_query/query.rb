@@ -10,7 +10,7 @@ module SalesforceBulkQuery
     # aren't there) It's in minutes
     OFFSET_FROM_NOW = 10
 
-    def initialize(sobject, soql, connection, options)
+    def initialize(sobject, soql, connection, options={})
       @sobject = sobject
       @soql = soql
       @connection = connection
@@ -82,7 +82,7 @@ module SalesforceBulkQuery
 
     # Get results for all jobs
     # @param options[:directory_path]
-    def get_results(options)
+    def get_results(options={})
       all_job_results = []
       job_result_filenames = []
       unfinished_subqueries = []
@@ -92,6 +92,10 @@ module SalesforceBulkQuery
         all_job_results.push(job_results)
         job_result_filenames += job_results[:filenames]
         unfinished_subqueries.push(job_results[:unfinished_batches].map {|b| b.soql})
+        # if it's done add it to done
+        if job_results[:unfinished_batches].empty?
+          @jobs_done.push(job)
+        end
       end
       return {
         :filenames => job_result_filenames + @finished_batch_filenames,
@@ -104,7 +108,7 @@ module SalesforceBulkQuery
 
     # Restart unfinished batches in all jobs in progress, creating new jobs
     # downloads results for finished batches
-    def get_result_or_restart(options)
+    def get_result_or_restart(options={})
       new_jobs = []
       job_ids_to_remove = []
       jobs_done = []
