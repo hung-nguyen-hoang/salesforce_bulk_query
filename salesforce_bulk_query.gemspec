@@ -11,16 +11,17 @@ Gem::Specification.new do |s|
   s.required_ruby_version = '~> 1.9'
 
   s.homepage = 'https://github.com/cvengros/salesforce_bulk_query'
-  s.summary = %q{Ruby wrapper over the Salesforce Bulk Query API}
-  s.description = %q{It's awesome}
+  s.summary = %q{Downloading data from Salesforce Bulk API made easy and scalable.}
+  s.description = %q{A library for downloading data from Salesforce Bulk API. We only focus on querying, other operations of the API aren't supported. Designed to handle a lot of data.}
+  s.license = 'BSD'
 
-  s.add_dependency 'json'
-  s.add_dependency 'xml-simple'
+  s.add_dependency 'json', '~> 1.8'
+  s.add_dependency 'xml-simple', '~> 1.1'
 
-  s.add_development_dependency 'multi_json'
-  s.add_development_dependency 'restforce'
-  s.add_development_dependency 'rspec'
-  s.add_development_dependency 'pry'
+  s.add_development_dependency 'multi_json', '~> 1.9'
+  s.add_development_dependency 'restforce', '~>1.4'
+  s.add_development_dependency 'rspec', '~>2.14'
+  s.add_development_dependency 'pry', '~>0.9'
 
 
   s.files = `git ls-files`.split($/)

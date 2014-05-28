@@ -5,12 +5,24 @@ A library for downloading data from Salesforce Bulk API. We only focus on queryi
 Derived from [Salesforce Bulk API](https://github.com/yatish27/salesforce_bulk_api)
 
 ## Basic Usage
-Before using the library, make sure you have the right account in your Salesforce organization that has access to API and that you won't run out of the [API limits]()
+To install, run:
+
+    gem install salesforce_bulk_query
+
+or add
+
+    gem salesforce_bulk_query
+
+to your Gemfile.
+
+Before using the library, make sure you have the right account in your Salesforce organization that has access to API and that you won't run out of the [API limits](http://www.salesforce.com/us/developer/docs/api_asynchpre/Content/asynch_api_concepts_limits.htm#batch_proc_time_title)
+
+For doing most of the API calls, the library uses [Restforce](https://github.com/ejholmes/restforce) Code example:
 
     require 'restforce'
     require 'salesforce_bulk_query'
 
-    # Create a bulk query instance
+    # Create a restforce client instance
     # with basic auth
     restforce = Restforce.new(
       :username => 'me',
@@ -90,7 +102,7 @@ If you're using Restforce as a client (which you probably are) and you want to d
 
 ## Copyright
 
-Copyright (c) 2014 GoodData Corporation. See LICENSE for details.
+Copyright (c) 2014 Yatish Mehta & GoodData Corporation. See [LICENSE](LICENSE) for details.
 
 
 
