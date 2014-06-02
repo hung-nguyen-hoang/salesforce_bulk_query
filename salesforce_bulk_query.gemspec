@@ -8,7 +8,7 @@ Gem::Specification.new do |s|
   s.authors = ['Petr Cvengros']
   s.email = ['petr.cvengros@gooddata.com']
 
-  s.required_ruby_version = '~> 1.9'
+  s.required_ruby_version = '>= 1.9'
 
   s.homepage = 'https://github.com/cvengros/salesforce_bulk_query'
   s.summary = %q{Downloading data from Salesforce Bulk API made easy and scalable.}
