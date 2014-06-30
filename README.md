@@ -15,7 +15,9 @@ or add
 
 to your Gemfile.
 
-Before using the library, make sure you have the right account in your Salesforce organization that has access to API and that you won't run out of the [API limits](http://www.salesforce.com/us/developer/docs/api_asynchpre/Content/asynch_api_concepts_limits.htm#batch_proc_time_title)
+Before using the library, make sure you have the right account in your Salesforce organization that has access to API and that you won't run out of the [API limits](http://www.salesforce.com/us/developer/docs/api_asynchpre/Content/asynch_api_concepts_limits.htm#batch_proc_time_title). 
+
+You will also need a Salesforce connected app for the `client_id` and `client_sercret` params, see [the guide](https://help.salesforce.com/HTViewHelpDoc?id=connected_app_create.htm&language=en_US). The app needs to have OAuth settings enabled (even if you plan to use just username-password-token authentication). The required permissions are _Access and manage your data (api)_, _Perform requests on your behalf at any time (refresh token, offline access)_. The other parameters such as redirect url don't need to be set.
 
 For doing most of the API calls, the library uses [Restforce](https://github.com/ejholmes/restforce) Code example:
 
@@ -80,7 +82,7 @@ There are a few optional settings you can pass to the `Api` methods:
 * `check_interval`: how often the results should be checked in secs. 
 * `time_limit`: maximum time the query can take. If this time limit is exceeded, available results are downloaded and the list of subqueries that didn't finished is returned. In seconds. The limti should be understood as limit for waiting. When the limit is reached the function downloads data that is ready which can take some additonal time. 
 * `created_from`, `created_to`: limits for the CreatedDate field. Note that queries can't contain any WHERE statements as we're doing some manipulations to create subqueries and we don't want things to get too difficult. So this is the way to limit the query yourself. The format is like `"1999-01-01T00:00:00.000Z"`
-* `single_batch`: If true, the queries are not divided into subqueries as described above. Instead one batch job is created with the given query. 
+* `single_batch`: If true, the queries are not divided into subqueries as described above. Instead one batch job is created with the given query. This is faster for small amount of data, but will fail with a timeout if you have a lot of data. 
 
 See specs for exact usage.
 
