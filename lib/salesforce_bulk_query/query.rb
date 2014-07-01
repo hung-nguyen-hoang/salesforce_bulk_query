@@ -1,4 +1,5 @@
 require 'salesforce_bulk_query/job'
+require 'date'
 
 module SalesforceBulkQuery
 
