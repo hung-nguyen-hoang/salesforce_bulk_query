@@ -44,7 +44,7 @@ For doing most of the API calls, the library uses [Restforce](https://github.com
     bulk_api = SalesforceBulkQuery::Api.new(restforce)
 
     # query the api
-    result = bulk_client.query("Task", "SELECT Id, Name FROM Task")
+    result = bulk_api.query("Task", "SELECT Id, Name FROM Task")
 
     # the result is files 
     puts "All the downloaded stuff is in csvs: #{result[:filenames]}"
