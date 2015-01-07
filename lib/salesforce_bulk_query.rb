@@ -84,6 +84,11 @@ module SalesforceBulkQuery
         sleep(check_interval)
       end
 
+      # nice list of files to log
+      if @logger && ! results[:filenames].empty?
+        @logger.info "Download finished. Downloaded files in #{File.dirname(results[:filenames][0])}. Filename size:"
+        @logger.info "\n" + results[:filenames].sort.map{|f| "#{File.basename(f)} #{File.size(f)}"}.join("\n")
+      end
       return results
     end
 

@@ -21,47 +21,49 @@ You will also need a Salesforce connected app for the `client_id` and `client_se
 
 For doing most of the API calls, the library uses [Restforce](https://github.com/ejholmes/restforce) Code example:
 
-    require 'restforce'
-    require 'salesforce_bulk_query'
+```ruby
+require 'restforce'
+require 'salesforce_bulk_query'
 
-    # Create a restforce client instance
-    # with basic auth
-    restforce = Restforce.new(
-      :username => 'me',
-      :password => 'password',
-      :security_token => 'token',
-      :client_id => "my sfdc app client id",
-      :client_secret => "my sfdc app client secret"
-    )
+# Create a restforce client instance
+# with basic auth
+restforce = Restforce.new(
+  :username => 'me',
+  :password => 'password',
+  :security_token => 'token',
+  :client_id => "my sfdc app client id",
+  :client_secret => "my sfdc app client secret"
+)
 
-    # or OAuth
-    restforce = Restforce.new(
-      :refresh_token => "xyz",
-      :client_id => "my sfdc app client id",
-      :client_secret => "my sfdc app client secret"
-    )
+# or OAuth
+restforce = Restforce.new(
+  :refresh_token => "xyz",
+  :client_id => "my sfdc app client id",
+  :client_secret => "my sfdc app client secret"
+)
 
-    bulk_api = SalesforceBulkQuery::Api.new(restforce)
+bulk_api = SalesforceBulkQuery::Api.new(restforce)
 
-    # query the api
-    result = bulk_api.query("Task", "SELECT Id, Name FROM Task")
+# query the api
+result = bulk_api.query("Task", "SELECT Id, Name FROM Task")
 
-    # the result is files 
-    puts "All the downloaded stuff is in csvs: #{result[:filenames]}"
+# the result is files 
+puts "All the downloaded stuff is in csvs: #{result[:filenames]}"
 
-    # query is a blocking call and can take several hours
-    # if you want to just start the query asynchronously, use 
-    query = start_query("Task", "SELECT Id, Name FROM Task")
+# query is a blocking call and can take several hours
+# if you want to just start the query asynchronously, use 
+query = start_query("Task", "SELECT Id, Name FROM Task")
 
-    # get a cofee
-    sleep(1234)
+# get a cofee
+sleep(1234)
 
-    # check the status
-    status = query.check_status
-    if status[:finished]
-      result = query.get_results
-      puts "All the downloaded stuff is in csvs: #{result[:filenames]}"
-    end
+# check the status
+status = query.check_status
+if status[:finished]
+  result = query.get_results
+  puts "All the downloaded stuff is in csvs: #{result[:filenames]}"
+end
+```
 
 ## How it works
 
@@ -100,7 +102,7 @@ See specs for exact usage.
     # switch off logging in Restforce so you don't get every message twice
     Restforce.log = false
 
-If you're using Restforce as a client (which you probably are) and you want to do logging, Salesforce Bulk Query will use a custom logging middleware for Restforce. This is because the original logging middleware puts all API responses to log, which is not something you would like to do for a few gigabytes CSVs. When you use the :logger parameter it's recommended you swith off the default logging in Restforce, otherwise you'll get all messages twice. 
+If you're using Restforce as a client (which you probably are) and you want to do logging, Salesforce Bulk Query will use a custom logging middleware for Restforce. This is because the original logging middleware puts all API responses to log, which is not something you would like to do for a few gigabytes CSVs. When you use the :logger parameter it's recommended you switch off the default logging in Restforce, otherwise you'll get all messages twice. 
 
 ## Copyright
 

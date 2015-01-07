@@ -77,7 +77,8 @@ module SalesforceBulkQuery
 
       return {
         :finished => all_done,
-        :job_statuses => job_statuses
+        :job_statuses => job_statuses,
+        :jobs_done => @jobs_done
       }
     end
 

@@ -39,7 +39,7 @@ describe SalesforceBulkQuery do
 
   describe "query" do
     context "when you give it no options" do
-      it "downloads the data to a few file", :constraint => 'slow'  do
+      it "downloads the data to a few files", :constraint => 'slow'  do
         result = @api.query("Opportunity", "SELECT Id, Name FROM Opportunity")
         result[:filenames].should have_at_least(2).items
         result[:results].should_not be_empty
