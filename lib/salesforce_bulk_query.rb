@@ -86,8 +86,9 @@ module SalesforceBulkQuery
 
       # nice list of files to log
       if @logger && ! results[:filenames].empty?
-        @logger.info "Download finished. Downloaded files in #{File.dirname(results[:filenames][0])}. Filename size:"
-        @logger.info "\n" + results[:filenames].sort.map{|f| "#{File.basename(f)} #{File.size(f)}"}.join("\n")
+
+        @logger.info "Download finished. Downloaded files in #{File.dirname(results[:filenames][0])}. Filename size [line count]:"
+        @logger.info "\n" + results[:filenames].sort.map{|f| "#{File.basename(f)} #{File.size(f)} #{line_count(f) if options[:count_lines]}"}.join("\n")
       end
       return results
     end
@@ -103,6 +104,14 @@ module SalesforceBulkQuery
     end
 
     private
+
+    # record count if they want to
+    def line_count(f)
+      i = 0
+      CSV.foreach(f, :headers => true) {|_| i+=1}
+      i
+    end
+
     # create a hash with just the fields we want to show in logs
     def results_to_string(results)
       return results.merge({

@@ -74,7 +74,8 @@ describe SalesforceBulkQuery do
           :directory_path => tmp,
           :created_from => from,
           :created_to => to,
-          :single_batch => true
+          :single_batch => true,
+          :count_lines => true
         )
 
         result[:filenames].should have(1).items
