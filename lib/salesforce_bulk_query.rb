@@ -1,3 +1,5 @@
+require 'csv'
+
 require 'salesforce_bulk_query/connection'
 require 'salesforce_bulk_query/query'
 require 'salesforce_bulk_query/logger'
