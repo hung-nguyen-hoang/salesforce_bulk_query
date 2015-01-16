@@ -37,7 +37,6 @@ module SalesforceBulkQuery
     end
 
     CHECK_INTERVAL = 10
-    QUERY_TIME_LIMIT = 60 * 60 * 2 # two hours
 
     # Query the Salesforce API. It's a blocking method - waits until the query is resolved
     # can take quite some time
@@ -46,7 +45,7 @@ module SalesforceBulkQuery
     # @return hash with :filenames and other useful stuff
     def query(sobject, soql, options={})
       check_interval = options[:check_interval] || CHECK_INTERVAL
-      time_limit = options[:time_limit] || QUERY_TIME_LIMIT
+      time_limit = options[:time_limit] # in seconds
 
       start_time = Time.now
 
@@ -56,7 +55,7 @@ module SalesforceBulkQuery
 
       loop do
         # check the status
-        status = query.check_status
+        status = query.check_status(options)
 
         # if finished get the result and we're done
         if status[:finished]
@@ -68,7 +67,7 @@ module SalesforceBulkQuery
         end
 
         # if we've run out of time limit, go away
-        if Time.now - start_time > time_limit
+        if time_limit && (Time.now - start_time > time_limit)
           @logger.warn "Ran out of time limit, downloading what's available and terminating" if @logger
 
           # download what's available
@@ -80,8 +79,6 @@ module SalesforceBulkQuery
           break
         end
 
-        # restart whatever needs to be restarted and sleep
-        query.get_result_or_restart(:directory_path => options[:directory_path])
         @logger.info "Sleeping #{check_interval}" if @logger
         sleep(check_interval)
       end
@@ -110,7 +107,7 @@ module SalesforceBulkQuery
     # record count if they want to
     def line_count(f)
       i = 0
-      CSV.foreach(f, :headers => true) {|_| i+=1}
+      CSV.foreach(f, :headers => true) {|_| i += 1}
       i
     end
 
@@ -124,7 +121,7 @@ module SalesforceBulkQuery
             end
           })
         end,
-        :done_jobs => results[:done_jobs].map {|j| j.to_log}
+        :jobs_done => results[:jobs_done].map {|j| j.to_log}
       })
     end
   end

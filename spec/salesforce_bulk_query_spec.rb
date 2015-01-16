@@ -43,7 +43,7 @@ describe SalesforceBulkQuery do
         result = @api.query("Opportunity", "SELECT Id, Name FROM Opportunity")
         result[:filenames].should have_at_least(2).items
         result[:results].should_not be_empty
-        result[:done_jobs].should_not be_empty
+        result[:jobs_done].should_not be_empty
 
         result[:filenames].each do |filename|
           File.size?(filename).should be_true
@@ -80,7 +80,7 @@ describe SalesforceBulkQuery do
 
         result[:filenames].should have(1).items
         result[:results].should_not be_empty
-        result[:done_jobs].should_not be_empty
+        result[:jobs_done].should_not be_empty
 
         filename = result[:filenames][0]
 
@@ -123,7 +123,7 @@ describe SalesforceBulkQuery do
         result = query.get_results
         result[:filenames].should have_at_least(2).items
         result[:results].should_not be_empty
-        result[:done_jobs].should_not be_empty
+        result[:jobs_done].should_not be_empty
       end
     end
 

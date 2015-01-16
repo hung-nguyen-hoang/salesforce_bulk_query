@@ -82,27 +82,36 @@ There are a few optional settings you can pass to the `Api` methods:
 * `filename_prefix`: prefix applied to csv files
 * `directory_path`: custom direcotory path for CSVs, if omitted, a new temp directory is created
 * `check_interval`: how often the results should be checked in secs. 
-* `time_limit`: maximum time the query can take. If this time limit is exceeded, available results are downloaded and the list of subqueries that didn't finished is returned. In seconds. The limti should be understood as limit for waiting. When the limit is reached the function downloads data that is ready which can take some additonal time. 
+* `time_limit`: maximum time the query can take. If this time limit is exceeded, available results are downloaded and the list of subqueries that didn't finished is returned. In seconds. The limti should be understood as limit for waiting. When the limit is reached the function downloads data that is ready which can take some additonal time. If no limit is given the query runs until it finishes
 * `created_from`, `created_to`: limits for the CreatedDate field. Note that queries can't contain any WHERE statements as we're doing some manipulations to create subqueries and we don't want things to get too difficult. So this is the way to limit the query yourself. The format is like `"1999-01-01T00:00:00.000Z"`
 * `single_batch`: If true, the queries are not divided into subqueries as described above. Instead one batch job is created with the given query. This is faster for small amount of data, but will fail with a timeout if you have a lot of data. 
 
 See specs for exact usage.
 
 ## Logging
-    require 'logger'
-    require 'restforce'
 
-    # create the restforce client
-    restforce = Restforce.new(...)
+```ruby
+require 'logger'
+require 'restforce'
 
-    # instantiate a logger and pass it to the Api constructor
-    logger = Logger.new(STDOUT)
-    bulk_api = SalesforceBulkQuery::Api.new(restforce, :logger => logger)
+# create the restforce client
+restforce = Restforce.new(...)
 
-    # switch off logging in Restforce so you don't get every message twice
-    Restforce.log = false
+# instantiate a logger and pass it to the Api constructor
+logger = Logger.new(STDOUT)
+bulk_api = SalesforceBulkQuery::Api.new(restforce, :logger => logger)
+
+# switch off logging in Restforce so you don't get every message twice
+Restforce.log = false
+```
 
 If you're using Restforce as a client (which you probably are) and you want to do logging, Salesforce Bulk Query will use a custom logging middleware for Restforce. This is because the original logging middleware puts all API responses to log, which is not something you would like to do for a few gigabytes CSVs. When you use the :logger parameter it's recommended you switch off the default logging in Restforce, otherwise you'll get all messages twice. 
+
+## Notes
+
+Query (user given) -> Job (Salesforce construct that encapsulates 15 batches) -> Batch (1 SOQL with CreatedDate constraints)
+
+At the beginning the query is divided into 15 subqueries and put into a single job. When one of the subqueries fails, a new job with 15 subqueries is created, the range of the failed query is divided into 15 sub-subqueries.
 
 ## Copyright
 
