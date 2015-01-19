@@ -54,14 +54,15 @@ puts "All the downloaded stuff is in csvs: #{result[:filenames]}"
 # if you want to just start the query asynchronously, use 
 query = start_query("Task", "SELECT Id, Name FROM Task")
 
-# get a cofee
+# get a coffee
 sleep(1234)
 
-# check the status
-status = query.check_status
-if status[:finished]
-  result = query.get_results
-  puts "All the downloaded stuff is in csvs: #{result[:filenames]}"
+# get what's available and check the status
+results = query.get_available_results
+if results[:finished]
+  puts "All the downloaded stuff is in csvs: #{results[:filenames]}"
+else
+  puts "This is going to take a while, get another coffee"
 end
 ```
 

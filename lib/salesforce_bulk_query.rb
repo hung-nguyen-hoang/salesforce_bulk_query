@@ -3,6 +3,8 @@ require 'csv'
 require 'salesforce_bulk_query/connection'
 require 'salesforce_bulk_query/query'
 require 'salesforce_bulk_query/logger'
+require 'salesforce_bulk_query/utils'
+
 
 # Module where all the stuff is happening
 module SalesforceBulkQuery
@@ -54,14 +56,14 @@ module SalesforceBulkQuery
       results = nil
 
       loop do
-        # check the status
+        # get available results and check the status
         status = query.check_status(options)
 
         # if finished get the result and we're done
         if status[:finished]
 
           # get the results and we're done
-          results = query.get_results(:directory_path => options[:directory_path])
+          results = query.get_results(options)
           @logger.info "Query finished. Results: #{results_to_string(results)}" if @logger
           break
         end
@@ -71,9 +73,7 @@ module SalesforceBulkQuery
           @logger.warn "Ran out of time limit, downloading what's available and terminating" if @logger
 
           # download what's available
-          results = query.get_results(
-            :directory_path => options[:directory_path],
-          )
+          results = query.get_results(options)
 
           @logger.info "Downloaded the following files: #{results[:filenames]} The following didn't finish in time: #{results[:unfinished_subqueries]}. Results: #{results_to_string(results)}" if @logger
           break
@@ -87,7 +87,7 @@ module SalesforceBulkQuery
       if @logger && ! results[:filenames].empty?
 
         @logger.info "Download finished. Downloaded files in #{File.dirname(results[:filenames][0])}. Filename size [line count]:"
-        @logger.info "\n" + results[:filenames].sort.map{|f| "#{File.basename(f)} #{File.size(f)} #{line_count(f) if options[:count_lines]}"}.join("\n")
+        @logger.info "\n" + results[:filenames].sort.map{|f| "#{File.basename(f)} #{File.size(f)} #{Utils.line_count(f) if options[:count_lines]}"}.join("\n")
       end
       return results
     end
@@ -103,13 +103,6 @@ module SalesforceBulkQuery
     end
 
     private
-
-    # record count if they want to
-    def line_count(f)
-      i = 0
-      CSV.foreach(f, :headers => true) {|_| i += 1}
-      i
-    end
 
     # create a hash with just the fields we want to show in logs
     def results_to_string(results)

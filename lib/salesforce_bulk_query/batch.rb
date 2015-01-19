@@ -1,5 +1,8 @@
 require 'tmpdir'
 
+require 'salesforce_bulk_query/utils'
+
+
 module SalesforceBulkQuery
   # Represents a Salesforce api batch. Batch contains a single subquery.
   # Many batches are contained in a Job.
@@ -42,7 +45,13 @@ module SalesforceBulkQuery
       return "#{@sobject}_#{@batch_id}_#{@start}-#{@stop}.csv"
     end
 
-    def get_result(directory_path=nil)
+    def get_result(options={})
+      # if it was already downloaded, no one should ask about it
+      if @filename
+        raise "This batch was already downloaded once: #{@filename}, #{@batch_id}"
+      end
+      directory_path = options[:directory_path]
+      skip_verification = options[:skip_verification]
 
       # request to get the actual results
       path = "job/#{@job_id}/batch/#{@batch_id}/result/#{@result_id}"
@@ -54,10 +63,27 @@ module SalesforceBulkQuery
       directory_path ||= @@directory_path
 
       # write it to a file
-      filename = File.join(directory_path, get_filename)
-      @connection.get_to_file(path, filename)
+      @filename = File.join(directory_path, get_filename)
+      @connection.get_to_file(path, @filename)
 
-      return filename
+      # Verify the number of downloaded records is roughly the same as
+      # count on the soql api
+      unless skip_verification
+        api_count = @connection.query_count(@sobject, @start, @stop)
+        # if we weren't able to get the count, fail.
+        if api_count.nil?
+          @verfication = false
+        else
+          # count the records in the csv
+          csv_count = Utils.line_count(@filename)
+          @verfication = csv_count >= api_count
+        end
+      end
+
+      return {
+        :filename => @filename,
+        :verfication => @verfication
+      }
     end
 
     def to_log
@@ -71,6 +97,5 @@ module SalesforceBulkQuery
         :directory_path => @@directory_path
       }
     end
-
   end
 end

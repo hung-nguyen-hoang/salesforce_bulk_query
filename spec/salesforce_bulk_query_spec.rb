@@ -112,19 +112,17 @@ describe SalesforceBulkQuery do
 
   describe "start_query" do
     it "starts a query that finishes some time later" do
-      query = @api.start_query("Opportunity",  "SELECT Id, Name, CreatedDate FROM Opportunity")
+      query = @api.start_query("Opportunity",  "SELECT Id, Name, CreatedDate FROM Opportunity", :single_batch => true)
 
       # get a cofee
-      sleep(40)
+      sleep(60*2)
 
       # check the status
-      status = query.check_status
-      if status[:finished]
-        result = query.get_results
-        result[:filenames].should have_at_least(2).items
-        result[:results].should_not be_empty
-        result[:jobs_done].should_not be_empty
-      end
+      result = query.get_available_results
+      expect(result[:finished]).to eq true
+      result[:filenames].should have_at_least(1).items
+      result[:results].should_not be_empty
+      result[:jobs_done].should_not be_empty
     end
 
   end

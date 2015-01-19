@@ -15,8 +15,15 @@ module SalesforceBulkQuery
       @sobject = sobject
       @connection = connection
       @logger = logger
+
+      # all batches (static)
       @batches = []
+
+      # unfinished batches as of last get_available_results call
       @unfinished_batches = []
+
+      # filenames fort the already downloaded and verified batches
+      @filenames = []
     end
 
     attr_reader :job_id
@@ -85,6 +92,7 @@ module SalesforceBulkQuery
 
       # add the batch to the list
       @batches.push(batch)
+      @unfinished_batches.push(batch)
     end
 
     def close_job
@@ -95,14 +103,14 @@ module SalesforceBulkQuery
       path = "job/#{@job_id}"
 
       response_parsed = @connection.post_xml(path, xml)
-      @job_closed = Time.now
+      @job_closed_time = Time.now
     end
 
     def check_status
       path = "job/#{@job_id}"
       response_parsed = @connection.get_xml(path)
-      @completed = Integer(response_parsed["numberBatchesCompleted"][0])
-      @finished = @completed == Integer(response_parsed["numberBatchesTotal"][0])
+      @completed_count = Integer(response_parsed["numberBatchesCompleted"][0])
+      @finished = @completed_count == Integer(response_parsed["numberBatchesTotal"][0])
       return {
         :finished => @finished,
         :some_failed => Integer(response_parsed["numberRecordsFailed"][0]) > 0,
@@ -110,43 +118,53 @@ module SalesforceBulkQuery
       }
     end
 
+    def over_limit?
+      (Time.now - @job_closed_time) > JOB_TIME_LIMIT
+    end
+
     # downloads whatever is available, returns as unfinished whatever is not
-    def get_results(options={})
-      filenames = []
+
+    def get_available_results(options={})
+      downloaded_filenames = []
       unfinished_batches = []
+      verification_fail_batches = []
 
       # get result for each batch in the job
-      @batches.each do |batch|
+      @unfinished_batches.each do |batch|
         batch_status = batch.check_status
 
         # if the result is ready
         if batch_status[:finished]
+          # each finished batch should go here only once
 
           # download the result
-          filename = batch.get_result(options[:directory_path])
-          filenames.push(filename)
+          result = batch.get_result(options[:directory_path])
+
+          # if the verification failed, put it to failed
+          # will never ask about this one again.
+          if result[:verification] == false
+            verification_fail_batches += batch
+          else
+            # if verification ok and finished put it to filenames
+            downloaded_filenames.push(result[:filename])
+          end
         else
           # otherwise put it to unfinished
           unfinished_batches.push(batch)
         end
       end
+
+      # cache the unfinished_batches till the next run
       @unfinished_batches = unfinished_batches
 
+      # cumulate filenames
+      @filenames += downloaded_filenames
+
       return {
-        :filenames => filenames,
-        :unfinished_batches => unfinished_batches
+        :filenames => @filenames,
+        :unfinished_batches => unfinished_batches,
+        :verification_fail_batches => verification_fail_batches
       }
-    end
-
-    def get_available_results(options={})
-      # if we didn't reach limit yet, do nothing
-      # if all done, do nothing
-      # if none of the batches finished, same thing
-      if (Time.now - @job_closed < JOB_TIME_LIMIT) || @finished || @completed == 0
-        return nil
-      end
-
-      return get_results(options)
     end
 
     def to_log
