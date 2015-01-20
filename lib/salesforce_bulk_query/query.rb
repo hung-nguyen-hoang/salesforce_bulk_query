@@ -77,7 +77,6 @@ module SalesforceBulkQuery
     def get_available_results(options={})
 
       all_done = true
-      job_result_filenames = []
       unfinished_subqueries = []
       jobs_in_progress = []
       jobs_restarted = []
@@ -94,8 +93,7 @@ module SalesforceBulkQuery
 
         # download what's available
         job_results = job.get_available_results(options)
-        job_result_filenames += job_results[:filenames]
-        unfinished_subqueries.push(job_results[:unfinished_batches].map {|b| b.soql})
+        unfinished_subqueries += job_results[:unfinished_batches].map {|b| b.soql}
 
         # split to subqueries what needs to be split
         to_split = job_results[:verification_fail_batches]
@@ -143,7 +141,7 @@ module SalesforceBulkQuery
 
       return {
         :finished => all_done,
-        :filenames => job_result_filenames + @finished_batch_filenames,
+        :filenames => @finished_batch_filenames,
         :unfinished_subqueries => unfinished_subqueries,
         :jobs_done => @jobs_done.map { |j| j.job_id }
       }
