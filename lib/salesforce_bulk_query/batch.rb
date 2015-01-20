@@ -15,9 +15,10 @@ module SalesforceBulkQuery
       @start = options[:start]
       @stop = options[:stop]
       @@directory_path ||= Dir.mktmpdir
+      @filename = nil
     end
 
-    attr_reader :soql, :start, :stop
+    attr_reader :soql, :start, :stop, :filename
 
     # Do the api request
     def create
@@ -50,6 +51,7 @@ module SalesforceBulkQuery
       if @filename
         raise "This batch was already downloaded once: #{@filename}, #{@batch_id}"
       end
+
       directory_path = options[:directory_path]
       skip_verification = options[:skip_verification]
 

@@ -42,7 +42,6 @@ describe SalesforceBulkQuery do
       it "downloads the data to a few files", :constraint => 'slow'  do
         result = @api.query("Opportunity", "SELECT Id, Name FROM Opportunity")
         result[:filenames].should have_at_least(2).items
-        result[:results].should_not be_empty
         result[:jobs_done].should_not be_empty
 
         result[:filenames].each do |filename|

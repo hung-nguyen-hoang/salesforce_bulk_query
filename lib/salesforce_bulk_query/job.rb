@@ -138,7 +138,7 @@ module SalesforceBulkQuery
           # each finished batch should go here only once
 
           # download the result
-          result = batch.get_result(options[:directory_path])
+          result = batch.get_result(options)
 
           # if the verification failed, put it to failed
           # will never ask about this one again.

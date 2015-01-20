@@ -57,23 +57,19 @@ module SalesforceBulkQuery
 
       loop do
         # get available results and check the status
-        status = query.check_status(options)
+        results = query.get_available_results(options)
 
         # if finished get the result and we're done
-        if status[:finished]
+        if results[:finished]
 
-          # get the results and we're done
-          results = query.get_results(options)
-          @logger.info "Query finished. Results: #{results_to_string(results)}" if @logger
+          # we're done
+          @logger.info "Query finished. Results: #{results}" if @logger
           break
         end
 
         # if we've run out of time limit, go away
         if time_limit && (Time.now - start_time > time_limit)
           @logger.warn "Ran out of time limit, downloading what's available and terminating" if @logger
-
-          # download what's available
-          results = query.get_results(options)
 
           @logger.info "Downloaded the following files: #{results[:filenames]} The following didn't finish in time: #{results[:unfinished_subqueries]}. Results: #{results_to_string(results)}" if @logger
           break
@@ -105,6 +101,7 @@ module SalesforceBulkQuery
     private
 
     # create a hash with just the fields we want to show in logs
+    # OUT
     def results_to_string(results)
       return results.merge({
         :results => results[:results].map do |r|
