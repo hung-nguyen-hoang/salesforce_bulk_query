@@ -11,10 +11,11 @@ module SalesforceBulkQuery
     BATCH_COUNT = 15
 
 
-    def initialize(sobject, connection, logger=nil)
+    def initialize(sobject, connection, options={})
       @sobject = sobject
       @connection = connection
-      @logger = logger
+      @logger = options[:logger]
+      @job_time_limit = options[:job_time_limit] || JOB_TIME_LIMIT
 
       # all batches (static)
       @batches = []
@@ -119,7 +120,7 @@ module SalesforceBulkQuery
     end
 
     def over_limit?
-      (Time.now - @job_closed_time) > JOB_TIME_LIMIT
+      (Time.now - @job_closed_time) > @job_time_limit
     end
 
     # downloads whatever is available, returns as unfinished whatever is not
@@ -143,14 +144,14 @@ module SalesforceBulkQuery
           # if the verification failed, put it to failed
           # will never ask about this one again.
           if result[:verification] == false
-            verification_fail_batches += batch
+            verification_fail_batches << batch
           else
             # if verification ok and finished put it to filenames
-            downloaded_filenames.push(result[:filename])
+            downloaded_filenames << result[:filename]
           end
         else
           # otherwise put it to unfinished
-          unfinished_batches.push(batch)
+          unfinished_batches << batch
         end
       end
 

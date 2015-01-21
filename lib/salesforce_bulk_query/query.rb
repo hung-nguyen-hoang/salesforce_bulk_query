@@ -33,6 +33,8 @@ module SalesforceBulkQuery
       @restarted_subqueries = []
     end
 
+    attr_reader :jobs_in_progress, :jobs_restarted, :jobs_done
+
     DEFAULT_MIN_CREATED = "1999-01-01T00:00:00.000Z"
 
     # Creates the first job, divides the query to subqueries, puts all the subqueries as batches to the job
@@ -43,7 +45,7 @@ module SalesforceBulkQuery
       end
 
       # create the first job
-      job = SalesforceBulkQuery::Job.new(@sobject, @connection, @logger)
+      job = SalesforceBulkQuery::Job.new(@sobject, @connection, {:logger => @logger}.merge(options))
       job.create_job
 
       # get the date when it should start
@@ -89,11 +91,11 @@ module SalesforceBulkQuery
         job_status = job.check_status
         job_over_limit = job.over_limit?
         job_done = job_status[:finished] || job_over_limit
-        all_done &&= job_done
 
         # download what's available
         job_results = job.get_available_results(options)
-        unfinished_subqueries += job_results[:unfinished_batches].map {|b| b.soql}
+        unfinished_batches = job_results[:unfinished_batches]
+        unfinished_subqueries += unfinished_batches.map {|b| b.soql}
 
         # split to subqueries what needs to be split
         to_split = job_results[:verification_fail_batches]
@@ -105,10 +107,15 @@ module SalesforceBulkQuery
           File.delete(b.filename)
         end
 
+        unless to_split.empty?
+require 'pry'; binding.pry
+        end
+
+
         to_split.each do |batch|
           # for each unfinished batch create a new job and add it to new jobs
           @logger.info "The following subquery didn't end in time / failed verification: #{batch.soql}. Dividing into multiple and running again" if @logger
-          new_job = SalesforceBulkQuery::Job.new(@sobject, @connection)
+          new_job = SalesforceBulkQuery::Job.new(@sobject, @connection, {:logger => @logger}.merge(options))
           new_job.create_job
           new_job.generate_batches(@soql, batch.start, batch.stop)
           new_job.close_job
@@ -125,14 +132,17 @@ module SalesforceBulkQuery
             # done, some batches needed to be restarted
             jobs_restarted.push(job)
           end
+
+          # store the filenames and restarted stuff
+          @finished_batch_filenames += job_results[:filenames]
+          @restarted_subqueries += to_split.map {|b| b.soql}
         else
           # still in progress
           jobs_in_progress.push(job)
         end
 
-        # store the filenames and restarted stuff
-        @finished_batch_filenames += job_results[:filenames]
-        @restarted_subqueries += to_split.map {|b| b.soql}
+        # we're done if this job is done and it didn't generate any new jobs
+        all_done &&= (job_done && to_split.empty?)
       end
 
       # remove the finished jobs from progress and add there the new ones

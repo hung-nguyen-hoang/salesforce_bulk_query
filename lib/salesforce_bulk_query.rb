@@ -38,7 +38,7 @@ module SalesforceBulkQuery
       return url
     end
 
-    CHECK_INTERVAL = 10
+    CHECK_INTERVAL = 30
 
     # Query the Salesforce API. It's a blocking method - waits until the query is resolved
     # can take quite some time
@@ -76,6 +76,7 @@ module SalesforceBulkQuery
         end
 
         @logger.info "Sleeping #{check_interval}" if @logger
+        @logger.info "Downloaded files: #{results[:filenames].length} Jobs in progress: #{query.jobs_in_progress.length}"
         sleep(check_interval)
       end
 
@@ -94,7 +95,7 @@ module SalesforceBulkQuery
     def start_query(sobject, soql, options={})
       # create the query, start it and return it
       query = SalesforceBulkQuery::Query.new(sobject, soql, @connection, {:logger => @logger}.merge(options))
-      query.start
+      query.start(options)
       return query
     end
 

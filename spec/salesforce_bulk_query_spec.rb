@@ -1,32 +1,16 @@
 require 'spec_helper'
 require 'multi_json'
-require 'restforce'
 require 'csv'
 require 'tmpdir'
 require 'logger'
+require 'set'
 
-LOGGING = false
-
+# test co nejak nafakuje tu situaci v twc
 describe SalesforceBulkQuery do
-
   before :all do
-    auth = MultiJson.load(File.read('test_salesforce_credentials.json'), :symbolize_keys => true)
-
-    @client = Restforce.new(
-      :username => auth[:username],
-      :password => auth[:password],
-      :security_token => auth[:token],
-      :client_id => auth[:client_id],
-      :client_secret => auth[:client_secret],
-      :api_version => '30.0'
-    )
-    @api = SalesforceBulkQuery::Api.new(@client,
-      :api_version => '30.0',
-      :logger => LOGGING ? Logger.new(STDOUT): nil
-    )
-
-    # switch off the normal logging
-    Restforce.log = false
+    @client = SpecHelper.create_default_restforce
+    @api = SpecHelper.create_default_api(@client)
+    @entity = ENV['ENTITY'] || 'Opportunity'
   end
 
   describe "instance_url" do
@@ -40,11 +24,15 @@ describe SalesforceBulkQuery do
   describe "query" do
     context "when you give it no options" do
       it "downloads the data to a few files", :constraint => 'slow'  do
-        result = @api.query("Opportunity", "SELECT Id, Name FROM Opportunity")
-        result[:filenames].should have_at_least(2).items
+        result = @api.query(@entity, "SELECT Id, Name FROM #{@entity}", :count_lines => true)
+        filenames = result[:filenames]
+        filenames.should have_at_least(2).items
         result[:jobs_done].should_not be_empty
 
-        result[:filenames].each do |filename|
+        # no duplicate filenames
+        expect(Set.new(filenames).length).to eq(filenames.length)
+
+        filenames.each do |filename|
           File.size?(filename).should be_true
 
           lines = CSV.read(filename)
@@ -104,6 +92,18 @@ describe SalesforceBulkQuery do
           :time_limit => 60
         )
         result[:unfinished_subqueries].should_not be_empty
+      end
+    end
+    context "when you pass a short job time limit" do
+      it "creates quite a few jobs quickly", :skip => true do
+        # development only
+        result = @api.query(
+          @entity,
+          "SELECT Id, Name FROM #{@entity}",
+          :count_lines => true,
+          :job_time_limit => 60
+        )
+        require 'pry'; binding.pry
       end
     end
   end
