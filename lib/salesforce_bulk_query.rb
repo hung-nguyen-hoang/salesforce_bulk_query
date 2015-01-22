@@ -60,10 +60,10 @@ module SalesforceBulkQuery
         results = query.get_available_results(options)
 
         # if finished get the result and we're done
-        if results[:finished]
+        if results[:succeeded]
 
           # we're done
-          @logger.info "Query finished. Results: #{results}" if @logger
+          @logger.info "Query succeeded. Results: #{results}" if @logger
           break
         end
 

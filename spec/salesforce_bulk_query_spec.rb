@@ -11,6 +11,7 @@ describe SalesforceBulkQuery do
     @client = SpecHelper.create_default_restforce
     @api = SpecHelper.create_default_api(@client)
     @entity = ENV['ENTITY'] || 'Opportunity'
+    @field_list = (ENV['FIELD_LIST'] || "Id,CreatedDate").split(',')
   end
 
   describe "instance_url" do
@@ -22,9 +23,14 @@ describe SalesforceBulkQuery do
   end
 
   describe "query" do
+    context "if you give it an invalid SOQL" do
+      it "fails with argument error" do
+        expect{@api.query(@entity, "SELECT Id, SomethingInvalid FROM #{@entity}")}.to raise_error(ArgumentError)
+      end
+    end
     context "when you give it no options" do
       it "downloads the data to a few files", :constraint => 'slow'  do
-        result = @api.query(@entity, "SELECT Id, Name FROM #{@entity}", :count_lines => true)
+        result = @api.query(@entity, "SELECT #{@field_list.join(', ')} FROM #{@entity}", :count_lines => true)
         filenames = result[:filenames]
         filenames.should have_at_least(2).items
         result[:jobs_done].should_not be_empty
@@ -39,7 +45,7 @@ describe SalesforceBulkQuery do
 
           if lines.length > 1
             # first line should be the header
-            lines[0].should eql(["Id", "Name"])
+            lines[0].should eql(@field_list)
 
             # first id shouldn't be emtpy
             lines[1][0].should_not be_empty
@@ -117,7 +123,7 @@ describe SalesforceBulkQuery do
 
       # check the status
       result = query.get_available_results
-      expect(result[:finished]).to eq true
+      expect(result[:succeeded]).to eq true
       result[:filenames].should have_at_least(1).items
       result[:jobs_done].should_not be_empty
     end

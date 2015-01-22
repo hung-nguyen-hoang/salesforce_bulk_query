@@ -7,7 +7,7 @@ module SalesforceBulkQuery
   class Job
     @@operation = 'query'
     @@xml_header = '<?xml version="1.0" encoding="utf-8" ?>'
-    JOB_TIME_LIMIT = 10 * 60
+    JOB_TIME_LIMIT = 15 * 60
     BATCH_COUNT = 15
 
 
@@ -87,7 +87,8 @@ module SalesforceBulkQuery
         :job_id => @job_id,
         :connection => @connection,
         :start => options[:start],
-        :stop => options[:stop]
+        :stop => options[:stop],
+        :logger => @logger
       )
       batch.create
 
@@ -111,10 +112,12 @@ module SalesforceBulkQuery
       path = "job/#{@job_id}"
       response_parsed = @connection.get_xml(path)
       @completed_count = Integer(response_parsed["numberBatchesCompleted"][0])
-      @finished = @completed_count == Integer(response_parsed["numberBatchesTotal"][0])
+      @succeeded = @completed_count == Integer(response_parsed["numberBatchesTotal"][0])
+
       return {
-        :finished => @finished,
-        :some_failed => Integer(response_parsed["numberRecordsFailed"][0]) > 0,
+        :succeeded => @succeeded,
+        :some_records_failed => Integer(response_parsed["numberRecordsFailed"][0]) > 0,
+        :some_batches_failed => Integer(response_parsed["numberBatchesFailed"][0]) > 0,
         :response => response_parsed
       }
     end
@@ -129,13 +132,14 @@ module SalesforceBulkQuery
       downloaded_filenames = []
       unfinished_batches = []
       verification_fail_batches = []
+      failed_batches = []
 
       # get result for each batch in the job
       @unfinished_batches.each do |batch|
         batch_status = batch.check_status
 
         # if the result is ready
-        if batch_status[:finished]
+        if batch_status[:succeeded]
           # each finished batch should go here only once
 
           # download the result
@@ -149,10 +153,18 @@ module SalesforceBulkQuery
             # if verification ok and finished put it to filenames
             downloaded_filenames << result[:filename]
           end
+        elsif batch_status[:failed]
+          # put it to failed and raise error at the end
+          failed_batches << batch
         else
           # otherwise put it to unfinished
           unfinished_batches << batch
         end
+      end
+
+      unless failed_batches.empty?
+        details = failed_batches.map{ |b| "#{b.batch_id}: #{b.fail_message}"}.join("\n")
+        fail ArgumentError, "#{failed_batches.length} batches failed. Details: #{details}"
       end
 
       # cache the unfinished_batches till the next run

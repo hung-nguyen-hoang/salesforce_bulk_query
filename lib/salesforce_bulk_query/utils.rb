@@ -8,5 +8,9 @@ module SalesforceBulkQuery
       CSV.foreach(f, :headers => true) {|_| i += 1}
       i
     end
+
+    def self.header(f)
+      File.open(f, &:readline).split(',').map{ |c| c.strip.delete('"') }
+    end
   end
 end

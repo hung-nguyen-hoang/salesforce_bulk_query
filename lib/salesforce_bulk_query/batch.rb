@@ -14,11 +14,12 @@ module SalesforceBulkQuery
       @connection = options[:connection]
       @start = options[:start]
       @stop = options[:stop]
+      @logger = options[:logger]
       @@directory_path ||= Dir.mktmpdir
       @filename = nil
     end
 
-    attr_reader :soql, :start, :stop, :filename
+    attr_reader :soql, :start, :stop, :filename, :fail_message, :batch_id, :csv_record_count
 
     # Do the api request
     def create
@@ -29,15 +30,48 @@ module SalesforceBulkQuery
       @batch_id = response_parsed['id'][0]
     end
 
+    # check status of the batch
+    # if it fails, don't throw an error now, let the job above collect all fails and raise it at once
     def check_status
-      # request to get the result id
-      path = "job/#{@job_id}/batch/#{@batch_id}/result"
+      succeeded = nil
+      failed = nil
 
-      response_parsed = @connection.get_xml(path)
+      # get the status of the batch
+      # https://www.salesforce.com/us/developer/docs/api_asynch/Content/asynch_api_batches_get_info.htm
+      status_path = "job/#{@job_id}/batch/#{@batch_id}"
+      status_response = @connection.get_xml(status_path)
 
-      @result_id = response_parsed["result"] ? response_parsed["result"][0] : nil
+      # interpret the status
+      @status = status_response['state'][0]
+
+      # https://www.salesforce.com/us/developer/docs/api_asynch/Content/asynch_api_batches_interpret_status.htm
+      case @status
+        when 'Failed'
+          failed = true
+          @fail_message = status_response['stateMessage']
+        when 'InProgress', 'Queued'
+          succeeded = false
+        when 'Completed'
+          succeeded = true
+          failed = false
+        else
+          fail "Something weird happened, #{@batch_id} has status #{@status}."
+      end
+
+      if succeeded
+        # request to get the result id
+        # https://www.salesforce.com/us/developer/docs/api_asynch/Content/asynch_api_batches_get_results.htm
+        path = "job/#{@job_id}/batch/#{@batch_id}/result"
+
+        response_parsed = @connection.get_xml(path)
+
+        @result_id = response_parsed["result"] ? response_parsed["result"][0] : nil
+      end
+
       return {
-        :finished => ! @result_id.nil?,
+        :failed => failed,
+        :fail_message => @fail_message,
+        :succeeded => succeeded,
         :result_id => @result_id
       }
     end
@@ -70,22 +104,34 @@ module SalesforceBulkQuery
 
       # Verify the number of downloaded records is roughly the same as
       # count on the soql api
+      # maybe also verify
       unless skip_verification
-        api_count = @connection.query_count(@sobject, @start, @stop)
-        # if we weren't able to get the count, fail.
-        if api_count.nil?
-          @verfication = false
-        else
-          # count the records in the csv
-          csv_count = Utils.line_count(@filename)
-          @verfication = csv_count >= api_count
-        end
+        @verfication = verification
       end
 
       return {
         :filename => @filename,
         :verfication => @verfication
       }
+    end
+
+    def verification
+      api_count = @connection.query_count(@sobject, @start, @stop)
+      # if we weren't able to get the count, fail.
+      if api_count.nil?
+        return false
+      end
+
+      # count the records in the csv
+      @csv_record_count = Utils.line_count(@filename)
+
+      if @logger && @csv_record_count % 100 == 0
+        @logger.warn "The line count for batch #{@soql} is highly suspicius: #{@csv_record_count}"
+      end
+      if @logger && @csv_record_count != api_count
+        @logger.warn "The counts for batch #{@soql} don't match. Record count in downloaded csv #{@csv_record_count}, record count on api count(): #{api_count}"
+      end
+      return @csv_record_count >= api_count
     end
 
     def to_log

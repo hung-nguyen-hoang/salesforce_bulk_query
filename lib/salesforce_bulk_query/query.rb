@@ -90,7 +90,7 @@ module SalesforceBulkQuery
         # check job status
         job_status = job.check_status
         job_over_limit = job.over_limit?
-        job_done = job_status[:finished] || job_over_limit
+        job_done = job_status[:succeeded] || job_over_limit
 
         # download what's available
         job_results = job.get_available_results(options)
@@ -107,9 +107,9 @@ module SalesforceBulkQuery
           File.delete(b.filename)
         end
 
-        unless to_split.empty?
-require 'pry'; binding.pry
-        end
+#         unless to_split.empty?
+# require 'pry'; binding.pry
+#         end
 
 
         to_split.each do |batch|
@@ -150,7 +150,7 @@ require 'pry'; binding.pry
       @jobs_done += jobs_done
 
       return {
-        :finished => all_done,
+        :succeeded => all_done,
         :filenames => @finished_batch_filenames,
         :unfinished_subqueries => unfinished_subqueries,
         :jobs_done => @jobs_done.map { |j| j.job_id }
