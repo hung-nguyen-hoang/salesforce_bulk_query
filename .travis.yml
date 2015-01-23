@@ -1,0 +1,26 @@
+language: ruby
+sudo: false
+os:
+  - linux
+  - osx
+branches:
+except:
+  - gh-pages
+  - next_doc_release
+env:
+  global:
+    - LOGGING=true
+    - secure: EVku6JcQcp69DksaZUo8Sluk2Mk45CHjs/7w2xDG6n58Px3zxG3i0DSxm5SYBaDvcIQCv+LLt/LyjTRs5t51GbQrFLZGxGLMHDkJ/eS4K2q27P8NGqM/Yj4WtxB7BYQNLQf00eCo9HeTyjY7AsAqZG8wn6W9DUF5Gtu7AUO0aiQ=
+    - secure: GwO5mPCUhaeC1fHuX86T3INRrrpqb2raWS+M83Ko4fnwKUryGiMOVYtzu5NSiTfN2YRHd3gvAsisempqCHndTPvuWcJhSCIGEZdIYgdxXAz4Meb78t0w/5rY7O9BOJ5+Zin098SmB/uiPvW/HDSQw+T+bBHO3ETw+h8VvFDmHM4=
+    - secure: TbguXDUV3wZhZ9ZHGYP2X0zo8gJejeuawmHQ6xey5gZzYrAH92r6wgddQ7KM2Vc+UCw0Gpnuy2AKM6EhEGbRShc5u6LmwAJIqZ6iG48ALOxha6JOoICuSbahRmnNSVOP1utzAXjOB20YO8lao5PGNfqyacFnr3VhqG22Kl5EJhc=
+    - secure: a2wb07pS1Cl6aiKN0tSVjW4Zsc0K0yQ3mI+nrR3KQpF1vaMu43gKYRGLz3NDWcaPrIgKfFyeKjucxd8o52dLn5Mi8OW7hpPWy3d9Y9umx0PpTYHl16tOw2PLpWedqGTM/eZn5Y8UtzrsAdVJKIcCXE7SA28qGmaR5KKuaJjC+3w=
+    - secure: JvH3Nr6N9GbSWDNc8vE0cwDZPQcUgwXB2MjtkPZ/fnfrR/x/cNmCyc2lzZqfExmDNn17YbR2fPP8zKBczEDvY8q03v42LfnpDSCR2F73yJzQe9dxHwACroAT8VgAz3o23ejgry31SzZz+IoUvZ2fzuoZs+uAt1yr48I2V03PqfM=
+rvm:
+  - 1.9.3
+  - jruby-19mode
+  - 2.1
+  - 2.2
+before_install:
+  - gem update --system
+  - gem update bundler
+script: rake ci

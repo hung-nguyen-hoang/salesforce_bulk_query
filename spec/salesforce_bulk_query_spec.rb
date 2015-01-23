@@ -1,32 +1,17 @@
 require 'spec_helper'
 require 'multi_json'
-require 'restforce'
 require 'csv'
 require 'tmpdir'
 require 'logger'
+require 'set'
 
-LOGGING = false
-
+# test co nejak nafakuje tu situaci v twc
 describe SalesforceBulkQuery do
-
   before :all do
-    auth = MultiJson.load(File.read('test_salesforce_credentials.json'), :symbolize_keys => true)
-
-    @client = Restforce.new(
-      :username => auth[:username],
-      :password => auth[:password],
-      :security_token => auth[:token],
-      :client_id => auth[:client_id],
-      :client_secret => auth[:client_secret],
-      :api_version => '30.0'
-    )
-    @api = SalesforceBulkQuery::Api.new(@client,
-      :api_version => '30.0',
-      :logger => LOGGING ? Logger.new(STDOUT): nil
-    )
-
-    # switch off the normal logging
-    Restforce.log = false
+    @client = SpecHelper.create_default_restforce
+    @api = SpecHelper.create_default_api(@client)
+    @entity = ENV['ENTITY'] || 'Opportunity'
+    @field_list = (ENV['FIELD_LIST'] || "Id,CreatedDate").split(',')
   end
 
   describe "instance_url" do
@@ -38,21 +23,29 @@ describe SalesforceBulkQuery do
   end
 
   describe "query" do
+    context "if you give it an invalid SOQL" do
+      it "fails with argument error" do
+        expect{@api.query(@entity, "SELECT Id, SomethingInvalid FROM #{@entity}")}.to raise_error(ArgumentError)
+      end
+    end
     context "when you give it no options" do
       it "downloads the data to a few files", :constraint => 'slow'  do
-        result = @api.query("Opportunity", "SELECT Id, Name FROM Opportunity")
-        result[:filenames].should have_at_least(2).items
-        result[:results].should_not be_empty
+        result = @api.query(@entity, "SELECT #{@field_list.join(', ')} FROM #{@entity}", :count_lines => true)
+        filenames = result[:filenames]
+        filenames.should have_at_least(2).items
         result[:jobs_done].should_not be_empty
 
-        result[:filenames].each do |filename|
+        # no duplicate filenames
+        expect(Set.new(filenames).length).to eq(filenames.length)
+
+        filenames.each do |filename|
           File.size?(filename).should be_true
 
           lines = CSV.read(filename)
 
           if lines.length > 1
             # first line should be the header
-            lines[0].should eql(["Id", "Name"])
+            lines[0].should eql(@field_list)
 
             # first id shouldn't be emtpy
             lines[1][0].should_not be_empty
@@ -79,7 +72,6 @@ describe SalesforceBulkQuery do
         )
 
         result[:filenames].should have(1).items
-        result[:results].should_not be_empty
         result[:jobs_done].should_not be_empty
 
         filename = result[:filenames][0]
@@ -99,32 +91,42 @@ describe SalesforceBulkQuery do
       end
     end
     context "when you give it a short time limit" do
-      it "downloads just a few files" do
+      it "downloads some stuff is unfinished" do
         result = @api.query(
-          "Task",
-          "SELECT Id, Name, CreatedDate FROM Task",
-          :time_limit => 30
+          "Opportunity",
+          "SELECT Id, Name, CreatedDate FROM Opportunity",
+          :time_limit => 15
         )
-        result[:results].should_not be_empty
+        # one of them should be non-empty
+        expect((! result[:unfinished_subqueries].empty?) || (! result[:filenames].empty?)).to eq true
+      end
+    end
+    context "when you pass a short job time limit" do
+      it "creates quite a few jobs quickly", :skip => true do
+        # development only
+        result = @api.query(
+          @entity,
+          "SELECT Id, CreatedDate FROM #{@entity}",
+          :count_lines => true,
+          :job_time_limit => 60
+        )
+        require 'pry'; binding.pry
       end
     end
   end
 
   describe "start_query" do
     it "starts a query that finishes some time later" do
-      query = @api.start_query("Opportunity",  "SELECT Id, Name, CreatedDate FROM Opportunity")
+      query = @api.start_query("Opportunity",  "SELECT Id, Name, CreatedDate FROM Opportunity", :single_batch => true)
 
       # get a cofee
-      sleep(40)
+      sleep(60*2)
 
       # check the status
-      status = query.check_status
-      if status[:finished]
-        result = query.get_results
-        result[:filenames].should have_at_least(2).items
-        result[:results].should_not be_empty
-        result[:jobs_done].should_not be_empty
-      end
+      result = query.get_available_results
+      expect(result[:succeeded]).to eq true
+      result[:filenames].should have_at_least(1).items
+      result[:jobs_done].should_not be_empty
     end
 
   end

@@ -3,6 +3,8 @@ require 'csv'
 require 'salesforce_bulk_query/connection'
 require 'salesforce_bulk_query/query'
 require 'salesforce_bulk_query/logger'
+require 'salesforce_bulk_query/utils'
+
 
 # Module where all the stuff is happening
 module SalesforceBulkQuery
@@ -36,7 +38,7 @@ module SalesforceBulkQuery
       return url
     end
 
-    CHECK_INTERVAL = 10
+    CHECK_INTERVAL = 30
 
     # Query the Salesforce API. It's a blocking method - waits until the query is resolved
     # can take quite some time
@@ -54,15 +56,14 @@ module SalesforceBulkQuery
       results = nil
 
       loop do
-        # check the status
-        status = query.check_status(options)
+        # get available results and check the status
+        results = query.get_available_results(options)
 
         # if finished get the result and we're done
-        if status[:finished]
+        if results[:succeeded]
 
-          # get the results and we're done
-          results = query.get_results(:directory_path => options[:directory_path])
-          @logger.info "Query finished. Results: #{results_to_string(results)}" if @logger
+          # we're done
+          @logger.info "Query succeeded. Results: #{results}" if @logger
           break
         end
 
@@ -70,16 +71,12 @@ module SalesforceBulkQuery
         if time_limit && (Time.now - start_time > time_limit)
           @logger.warn "Ran out of time limit, downloading what's available and terminating" if @logger
 
-          # download what's available
-          results = query.get_results(
-            :directory_path => options[:directory_path],
-          )
-
-          @logger.info "Downloaded the following files: #{results[:filenames]} The following didn't finish in time: #{results[:unfinished_subqueries]}. Results: #{results_to_string(results)}" if @logger
+          @logger.info "Downloaded the following files: #{results[:filenames]} The following didn't finish in time: #{results[:unfinished_subqueries]}." if @logger
           break
         end
 
         @logger.info "Sleeping #{check_interval}" if @logger
+        @logger.info "Downloaded files: #{results[:filenames].length} Jobs in progress: #{query.jobs_in_progress.length}"
         sleep(check_interval)
       end
 
@@ -87,7 +84,7 @@ module SalesforceBulkQuery
       if @logger && ! results[:filenames].empty?
 
         @logger.info "Download finished. Downloaded files in #{File.dirname(results[:filenames][0])}. Filename size [line count]:"
-        @logger.info "\n" + results[:filenames].sort.map{|f| "#{File.basename(f)} #{File.size(f)} #{line_count(f) if options[:count_lines]}"}.join("\n")
+        @logger.info "\n" + results[:filenames].sort.map{|f| "#{File.basename(f)} #{File.size(f)} #{Utils.line_count(f) if options[:count_lines]}"}.join("\n")
       end
       return results
     end
@@ -98,31 +95,8 @@ module SalesforceBulkQuery
     def start_query(sobject, soql, options={})
       # create the query, start it and return it
       query = SalesforceBulkQuery::Query.new(sobject, soql, @connection, {:logger => @logger}.merge(options))
-      query.start
+      query.start(options)
       return query
-    end
-
-    private
-
-    # record count if they want to
-    def line_count(f)
-      i = 0
-      CSV.foreach(f, :headers => true) {|_| i += 1}
-      i
-    end
-
-    # create a hash with just the fields we want to show in logs
-    def results_to_string(results)
-      return results.merge({
-        :results => results[:results].map do |r|
-          r.merge({
-            :unfinished_batches => r[:unfinished_batches].map do |b|
-              b.to_log
-            end
-          })
-        end,
-        :jobs_done => results[:jobs_done].map {|j| j.to_log}
-      })
     end
   end
 end

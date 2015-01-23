@@ -1,3 +1,4 @@
-test_salesforce_credentials.json
+env_setup.sh
 Gemfile.lock
 *.gem
+hh*

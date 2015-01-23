@@ -7,7 +7,7 @@ module SalesforceBulkQuery
   # shared in all classes that do some requests
   class Connection
     def initialize(client, api_version, logger=nil, filename_prefix=nil)
-      @client=client
+      @client = client
       @logger = logger
       @filename_prefix = filename_prefix
 
@@ -109,6 +109,18 @@ module SalesforceBulkQuery
           @logger.error "Failed 3 times, last error: #{e}, #{e.backtrace}" if @logger
           raise
         end
+      end
+    end
+
+    def query_count(sobject, from, to)
+      # do it with retries, if it doesn't succeed, return nil, don't fail.
+      begin
+        with_retries do
+          q = @client.query("SELECT COUNT() FROM #{sobject} WHERE CreatedDate >= #{from} AND CreatedDate < #{to}")
+          return q.size
+        end
+      rescue TimeoutError => e
+        return nil
       end
     end
 

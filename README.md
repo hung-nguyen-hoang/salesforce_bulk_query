@@ -4,6 +4,15 @@ A library for downloading data from Salesforce Bulk API. We only focus on queryi
 
 Derived from [Salesforce Bulk API](https://github.com/yatish27/salesforce_bulk_api)
 
+## Status
+
+[![Gem Version](https://badge.fury.io/rb/salesforce_bulk_query.png)](http://badge.fury.io/rb/salesforce_bulk_query)
+[![Downloads](http://img.shields.io/gem/dt/salesforce_bulk_query.svg)](http://rubygems.org/gems/salesforce_bulk_query)
+[![Dependency Status](https://gemnasium.com/cvengros/salesforce_bulk_query.png)](https://gemnasium.com/cvengros/salesforce_bulk_query)
+[![Code Climate](https://codeclimate.com/github/cvengros/salesforce_bulk_query.png)](https://codeclimate.com/github/cvengros/salesforce_bulk_query)
+[![Build Status](https://travis-ci.org/cvengros/salesforce_bulk_query.png)](https://travis-ci.org/cvengros/salesforce_bulk_query)
+[![Coverage Status](https://coveralls.io/repos/cvengros/salesforce_bulk_query/badge.png)](https://coveralls.io/r/cvengros/salesforce_bulk_query)
+
 ## Basic Usage
 To install, run:
 
@@ -54,14 +63,15 @@ puts "All the downloaded stuff is in csvs: #{result[:filenames]}"
 # if you want to just start the query asynchronously, use 
 query = start_query("Task", "SELECT Id, Name FROM Task")
 
-# get a cofee
+# get a coffee
 sleep(1234)
 
-# check the status
-status = query.check_status
-if status[:finished]
-  result = query.get_results
-  puts "All the downloaded stuff is in csvs: #{result[:filenames]}"
+# get what's available and check the status
+results = query.get_available_results
+if results[:succeeded]
+  puts "All the downloaded stuff is in csvs: #{results[:filenames]}"
+else
+  puts "This is going to take a while, get another coffee"
 end
 ```
 
@@ -112,6 +122,38 @@ If you're using Restforce as a client (which you probably are) and you want to d
 Query (user given) -> Job (Salesforce construct that encapsulates 15 batches) -> Batch (1 SOQL with CreatedDate constraints)
 
 At the beginning the query is divided into 15 subqueries and put into a single job. When one of the subqueries fails, a new job with 15 subqueries is created, the range of the failed query is divided into 15 sub-subqueries.
+
+## Running tests locally
+Travis CI is set up for this repository to make sure all the tests are passing with each commit.
+
+To run the tests locally:
+
+* Copy the env_setup-example.sh file
+```
+cp  env_setup-example.sh env_setup.sh
+```
+* Setup all the params in env_setup. USERNAME, PASSWORD and TOKEN are your salesforce account credentials. You can get those by [registering for a free developer account](https://developer.salesforce.com/signup). You might need to [reset your security token](https://help.salesforce.com/apex/HTViewHelpDoc?id=user_security_token.htm) to put it to TOKEN variable. CLIENT_ID and CLIENT_SECRET belong to your Salesforce connected app. You can create one by following the steps outlined in [the tutorial](https://help.salesforce.com/apex/HTViewHelpDoc?id=connected_app_create.htm). Make sure you check the 'api' permission.
+* Run the env_setup
+```
+. env_setup.sh
+```
+* Run the tests
+```
+bundle exec rspec
+```
+
+Note that env_setup.sh is ignored from git in .gitignore so that you don't commit your credentials by accident.
+
+## Contributing
+
+1. Fork it ( https://github.com/[my-github-username]/salesforce_bulk_query/fork )
+2. Create your feature branch (`git checkout -b my-new-feature`)
+3. Run the tests (see above), fix if they fail.
+3. Commit your changes (`git commit -am 'Add some feature'`)
+4. Push to the branch (`git push origin my-new-feature`)
+5. Create a new Pull Request
+
+Make sure you run all the tests and they pass. If you create a new feature, write a test for it. 
 
 ## Copyright
 

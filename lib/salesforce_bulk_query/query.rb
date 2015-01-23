@@ -19,23 +19,33 @@ module SalesforceBulkQuery
       @created_from = options[:created_from]
       @created_to = options[:created_to]
       @single_batch = options[:single_batch]
+
+      # jobs currently running
       @jobs_in_progress = []
+
+      # successfully finished jobs with no batches to split
       @jobs_done = []
+
+      # finished or timeouted jobs with some batches split into other jobs
+      @jobs_restarted = []
+
       @finished_batch_filenames = []
       @restarted_subqueries = []
     end
 
+    attr_reader :jobs_in_progress, :jobs_restarted, :jobs_done
+
     DEFAULT_MIN_CREATED = "1999-01-01T00:00:00.000Z"
 
     # Creates the first job, divides the query to subqueries, puts all the subqueries as batches to the job
-    def start
+    def start(options={})
       # order by and where not allowed
       if (!@single_batch) && (@soql =~ /WHERE/i || @soql =~ /ORDER BY/i)
         raise "You can't have WHERE or ORDER BY in your soql. If you want to download just specific date range use created_from / created_to"
       end
 
       # create the first job
-      job = SalesforceBulkQuery::Job.new(@sobject, @connection, @logger)
+      job = SalesforceBulkQuery::Job.new(@sobject, @connection, {:logger => @logger}.merge(options))
       job.create_job
 
       # get the date when it should start
@@ -55,7 +65,7 @@ module SalesforceBulkQuery
 
       # generate intervals
       start = DateTime.parse(min_created)
-      stop = @created_to ? DateTime.parse(@created_to) : DateTime.now - Rational(OFFSET_FROM_NOW, 1440)
+      stop = @created_to ? DateTime.parse(@created_to) : DateTime.now - Rational(options[:offset_from_now] || OFFSET_FROM_NOW, 1440)
       job.generate_batches(@soql, start, stop, @single_batch)
 
       job.close_job
@@ -66,106 +76,80 @@ module SalesforceBulkQuery
     # Get results for all finished jobs. If there are some unfinished batches, skip them and return them as unfinished.
     #
     # @param options[:directory_path]
-    def get_results(options={})
-      all_job_results = []
-      job_result_filenames = []
-      unfinished_subqueries = []
+    def get_available_results(options={})
 
-      # check each job and put it there
-      @jobs_in_progress.each do |job|
-        job_results = job.get_results(options)
-        all_job_results.push(job_results)
-        job_result_filenames += job_results[:filenames]
-        unfinished_subqueries.push(job_results[:unfinished_batches].map {|b| b.soql})
-        # if it's done add it to done
-        if job_results[:unfinished_batches].empty?
-          @jobs_done.push(job)
-        end
-      end
-      return {
-        :filenames => job_result_filenames + @finished_batch_filenames,
-        :unfinished_subqueries => unfinished_subqueries,
-        :restarted_subqueries => @restarted_subqueries,
-        :results => all_job_results,
-        :jobs_done => @jobs_done
-      }
-    end
-
-    # Check statuses of all jobs
-    def check_status(options={})
-      just_check = options[:just_check]
       all_done = true
-      job_statuses = []
-
-      # check all jobs statuses and put them in an array
-      @jobs_in_progress.each do |job|
-        job_status = job.check_status
-        all_done &&= job_status[:finished]
-        job_statuses.push(job_status)
-      end
-
-      # restart whatever needs to be restarted, download what's available
-      get_result_or_restart({:directory_path => options[:directory_path]}.merge(options)) unless just_check
-
-      return {
-        :finished => all_done,
-        :job_statuses => job_statuses,
-        :jobs_done => @jobs_done
-      }
-    end
-
-    # Restart unfinished batches in all jobs in progress, creating new jobs
-    # downloads results for finished batches
-    def get_result_or_restart(options={})
-      skip_checks = options[:skip_verification_checks]
-      new_jobs = []
-      job_ids_to_remove = []
+      unfinished_subqueries = []
+      jobs_in_progress = []
+      jobs_restarted = []
       jobs_done = []
 
+      # check all jobs statuses and split what should be split
       @jobs_in_progress.each do |job|
-        # get available stuff, if not the right time yet, go on
-        available_results = job.get_available_results(options)
-        if available_results.nil?
-          next
+
+        # check job status
+        job_status = job.check_status
+        job_over_limit = job.over_limit?
+        job_done = job_status[:succeeded] || job_over_limit
+
+        # download what's available
+        job_results = job.get_available_results(options)
+        unfinished_batches = job_results[:unfinished_batches]
+        unfinished_subqueries += unfinished_batches.map {|b| b.soql}
+
+        # split to subqueries what needs to be split
+        to_split = job_results[:verification_fail_batches]
+        to_split += unfinished_batches if job_over_limit
+
+        # delete files associated with batches that failed verification
+        job_results[:verification_fail_batches].each do |b|
+          @logger.info "Deleting #{b.filename}, verification failed."
+          File.delete(b.filename)
         end
 
-        unfinished_batches = available_results[:unfinished_batches]
-
-#require 'pry'; binding.pry
-        unless skip_checks
-          # for each finished batch
-          #   count the number of downloaded records
-          #   query the count on the REST api - restforce
-          #     (generate the count soql - replacing all between SELECT and FROM by count())
-          #   if it fails, retry asi, treat as bad count
-          #   if downloaded count < query count - treat the batch as failed - delete the file, create a new job with sub-batches.
-          # poradne to vsechno zalogovat
-        end
-
-        # store the filenames and restarted stuff
-        @finished_batch_filenames += available_results[:filenames]
-        @restarted_subqueries += unfinished_batches.map {|b| b.soql}
-
-        unfinished_batches.each do |batch|
+        to_split.each do |batch|
           # for each unfinished batch create a new job and add it to new jobs
-          @logger.info "The following subquery didn't end in time: #{batch.soql}. Dividing into multiple and running again" if @logger
-          new_job = SalesforceBulkQuery::Job.new(@sobject, @connection)
+          @logger.info "The following subquery didn't end in time / failed verification: #{batch.soql}. Dividing into multiple and running again" if @logger
+          new_job = SalesforceBulkQuery::Job.new(@sobject, @connection, {:logger => @logger}.merge(options))
           new_job.create_job
           new_job.generate_batches(@soql, batch.start, batch.stop)
           new_job.close_job
-          new_jobs.push(new_job)
+          jobs_in_progress.push(new_job)
         end
 
-        # the current job to be removed from jobs in progress
-        job_ids_to_remove.push(job.job_id)
-        jobs_done.push(job)
+        # what to do with the current job
+        # finish, some stuff restarted
+        if job_done
+          if to_split.empty?
+            # done, nothing left
+            jobs_done.push(job)
+          else
+            # done, some batches needed to be restarted
+            jobs_restarted.push(job)
+          end
+
+          # store the filenames and restarted stuff
+          @finished_batch_filenames += job_results[:filenames]
+          @restarted_subqueries += to_split.map {|b| b.soql}
+        else
+          # still in progress
+          jobs_in_progress.push(job)
+        end
+
+        # we're done if this job is done and it didn't generate any new jobs
+        all_done &&= (job_done && to_split.empty?)
       end
 
       # remove the finished jobs from progress and add there the new ones
-      @jobs_in_progress.select! {|j| ! job_ids_to_remove.include?(j.job_id)}
+      @jobs_in_progress = jobs_in_progress
       @jobs_done += jobs_done
 
-      @jobs_in_progress += new_jobs
+      return {
+        :succeeded => all_done,
+        :filenames => @finished_batch_filenames,
+        :unfinished_subqueries => unfinished_subqueries,
+        :jobs_done => @jobs_done.map { |j| j.job_id }
+      }
     end
   end
 end
