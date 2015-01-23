@@ -71,7 +71,7 @@ module SalesforceBulkQuery
         if time_limit && (Time.now - start_time > time_limit)
           @logger.warn "Ran out of time limit, downloading what's available and terminating" if @logger
 
-          @logger.info "Downloaded the following files: #{results[:filenames]} The following didn't finish in time: #{results[:unfinished_subqueries]}. Results: #{results_to_string(results)}" if @logger
+          @logger.info "Downloaded the following files: #{results[:filenames]} The following didn't finish in time: #{results[:unfinished_subqueries]}." if @logger
           break
         end
 
@@ -97,23 +97,6 @@ module SalesforceBulkQuery
       query = SalesforceBulkQuery::Query.new(sobject, soql, @connection, {:logger => @logger}.merge(options))
       query.start(options)
       return query
-    end
-
-    private
-
-    # create a hash with just the fields we want to show in logs
-    # OUT
-    def results_to_string(results)
-      return results.merge({
-        :results => results[:results].map do |r|
-          r.merge({
-            :unfinished_batches => r[:unfinished_batches].map do |b|
-              b.to_log
-            end
-          })
-        end,
-        :jobs_done => results[:jobs_done].map {|j| j.to_log}
-      })
     end
   end
 end
