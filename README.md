@@ -4,6 +4,15 @@ A library for downloading data from Salesforce Bulk API. We only focus on queryi
 
 Derived from [Salesforce Bulk API](https://github.com/yatish27/salesforce_bulk_api)
 
+## Status
+
+[![Gem Version](https://badge.fury.io/rb/salesforce_bulk_query.png)](http://badge.fury.io/rb/salesforce_bulk_query)
+[![Downloads](http://img.shields.io/gem/dt/salesforce_bulk_query.svg)](http://rubygems.org/gems/salesforce_bulk_query)
+[![Dependency Status](https://gemnasium.com/cvengros/salesforce_bulk_query.png)](https://gemnasium.com/cvengros/salesforce_bulk_query)
+[![Code Climate](https://codeclimate.com/github/cvengros/salesforce_bulk_query.png)](https://codeclimate.com/github/cvengros/salesforce_bulk_query)
+[![Build Status](https://travis-ci.org/cvengros/salesforce_bulk_query.png)](https://travis-ci.org/cvengros/salesforce_bulk_query)
+[![Coverage Status](https://coveralls.io/repos/cvengros/salesforce_bulk_query/badge.png)](https://coveralls.io/r/cvengros/salesforce_bulk_query)
+
 ## Basic Usage
 To install, run:
 

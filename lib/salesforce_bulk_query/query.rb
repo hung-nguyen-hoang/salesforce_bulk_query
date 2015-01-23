@@ -107,11 +107,6 @@ module SalesforceBulkQuery
           File.delete(b.filename)
         end
 
-#         unless to_split.empty?
-# require 'pry'; binding.pry
-#         end
-
-
         to_split.each do |batch|
           # for each unfinished batch create a new job and add it to new jobs
           @logger.info "The following subquery didn't end in time / failed verification: #{batch.soql}. Dividing into multiple and running again" if @logger
