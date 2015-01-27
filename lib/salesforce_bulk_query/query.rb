@@ -78,7 +78,6 @@ module SalesforceBulkQuery
     # @param options[:directory_path]
     def get_available_results(options={})
 
-      all_done = true
       unfinished_subqueries = []
       jobs_in_progress = []
       jobs_restarted = []
@@ -135,17 +134,15 @@ module SalesforceBulkQuery
           # still in progress
           jobs_in_progress.push(job)
         end
-
-        # we're done if this job is done and it didn't generate any new jobs
-        all_done &&= (job_done && to_split.empty?)
       end
 
       # remove the finished jobs from progress and add there the new ones
       @jobs_in_progress = jobs_in_progress
       @jobs_done += jobs_done
 
+      # we're done if there're no jobs in progress
       return {
-        :succeeded => all_done,
+        :succeeded => @jobs_in_progress.empty?,
         :filenames => @finished_batch_filenames,
         :unfinished_subqueries => unfinished_subqueries,
         :jobs_done => @jobs_done.map { |j| j.job_id }

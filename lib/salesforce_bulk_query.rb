@@ -4,6 +4,7 @@ require 'salesforce_bulk_query/connection'
 require 'salesforce_bulk_query/query'
 require 'salesforce_bulk_query/logger'
 require 'salesforce_bulk_query/utils'
+require 'salesforce_bulk_query/version'
 
 
 # Module where all the stuff is happening
@@ -46,6 +47,7 @@ module SalesforceBulkQuery
     # @param soql SOQL query, e.g. "SELECT Name FROM Opportunity"
     # @return hash with :filenames and other useful stuff
     def query(sobject, soql, options={})
+      @logger.info "Running query: #{soql}. Gem version salesforce_bulk_query: #{SalesforceBulkQuery::VERSION}" if @logger
       check_interval = options[:check_interval] || CHECK_INTERVAL
       time_limit = options[:time_limit] # in seconds
 
