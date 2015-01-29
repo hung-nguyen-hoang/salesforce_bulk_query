@@ -177,6 +177,7 @@ module SalesforceBulkQuery
       @logger.info "unfinished batches: #{unfinished_batches}\nverification_fail_batches: #{verification_fail_batches}" if @logger
 
       return {
+        :finished => @unfinished_batches.empty?,
         :filenames => @filenames,
         :unfinished_batches => @unfinished_batches,
         :verification_fail_batches => verification_fail_batches

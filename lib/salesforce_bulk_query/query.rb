@@ -86,13 +86,12 @@ module SalesforceBulkQuery
       # check all jobs statuses and split what should be split
       @jobs_in_progress.each do |job|
 
-        # check job status
-        job_status = job.check_status
-        job_over_limit = job.over_limit?
-        job_done = job_status[:succeeded] || job_over_limit
-
         # download what's available
         job_results = job.get_available_results(options)
+
+        job_over_limit = job.over_limit?
+        job_done = job_results[:finished] || job_over_limit
+
         @logger.debug "job_results: #{job_results}" if @logger
 
         unfinished_batches = job_results[:unfinished_batches]
