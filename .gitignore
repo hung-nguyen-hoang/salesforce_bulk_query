@@ -1,4 +1,4 @@
-env_setup.sh
+*env_setup.sh
 Gemfile.lock
 *.gem
 hh*

@@ -93,15 +93,19 @@ module SalesforceBulkQuery
 
         # download what's available
         job_results = job.get_available_results(options)
+        @logger.debug "job_results: #{job_results}" if @logger
+
         unfinished_batches = job_results[:unfinished_batches]
+        verification_fail_batches = job_results[:verification_fail_batches]
+
         unfinished_subqueries += unfinished_batches.map {|b| b.soql}
 
         # split to subqueries what needs to be split
-        to_split = job_results[:verification_fail_batches]
+        to_split = verification_fail_batches
         to_split += unfinished_batches if job_over_limit
 
         # delete files associated with batches that failed verification
-        job_results[:verification_fail_batches].each do |b|
+        verification_fail_batches.each do |b|
           @logger.info "Deleting #{b.filename}, verification failed."
           File.delete(b.filename)
         end
@@ -122,6 +126,8 @@ module SalesforceBulkQuery
           if to_split.empty?
             # done, nothing left
             jobs_done.push(job)
+
+            @logger.info "#{job.job_id} finished. Nothing to split. unfinished_batches: #{unfinished_batches}, verification_fail_batches: #{verification_fail_batches}" if @logger
           else
             # done, some batches needed to be restarted
             jobs_restarted.push(job)

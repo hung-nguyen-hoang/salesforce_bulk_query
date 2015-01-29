@@ -144,6 +144,7 @@ module SalesforceBulkQuery
 
           # download the result
           result = batch.get_result(options)
+          @logger.info "get_result result: #{result}" if @logger
 
           # if the verification failed, put it to failed
           # will never ask about this one again.
@@ -173,9 +174,11 @@ module SalesforceBulkQuery
       # cumulate filenames
       @filenames += downloaded_filenames
 
+      @logger.info "unfinished batches: #{unfinished_batches}\nverification_fail_batches: #{verification_fail_batches}" if @logger
+
       return {
         :filenames => @filenames,
-        :unfinished_batches => unfinished_batches,
+        :unfinished_batches => @unfinished_batches,
         :verification_fail_batches => verification_fail_batches
       }
     end

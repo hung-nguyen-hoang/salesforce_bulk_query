@@ -60,6 +60,7 @@ module SalesforceBulkQuery
       loop do
         # get available results and check the status
         results = query.get_available_results(options)
+        @logger.debug "get_available_results: #{results}"
 
         # if finished get the result and we're done
         if results[:succeeded]

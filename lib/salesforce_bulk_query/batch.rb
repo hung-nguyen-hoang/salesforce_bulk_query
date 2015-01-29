@@ -93,7 +93,7 @@ module SalesforceBulkQuery
       path = "job/#{@job_id}/batch/#{@batch_id}/result/#{@result_id}"
 
       if !@result_id
-        raise "batch not finished yet, trying to get result: #{path}"
+        raise "batch #{@batch_id} not finished yet, trying to get result: #{path}"
       end
 
       directory_path ||= @@directory_path
@@ -106,16 +106,16 @@ module SalesforceBulkQuery
       # count on the soql api
       # maybe also verify
       unless skip_verification
-        @verfication = verification
+        verify
       end
-
+      @logger.debug "get_result :verification : #{@verification}" if @logger
       return {
         :filename => @filename,
-        :verfication => @verfication
+        :verification => @verification
       }
     end
 
-    def verification
+    def verify
       api_count = @connection.query_count(@sobject, @start, @stop)
       # if we weren't able to get the count, fail.
       if api_count.nil?
@@ -125,13 +125,15 @@ module SalesforceBulkQuery
       # count the records in the csv
       @csv_record_count = Utils.line_count(@filename)
 
-      if @logger && @csv_record_count % 100 == 0
-        @logger.warn "The line count for batch #{@soql} is highly suspicius: #{@csv_record_count}"
+      if @logger && @csv_record_count > 0 && @csv_record_count % 100 == 0
+        @logger.warn "The line count for batch id #{@batch_id} soql #{@soql} is highly suspicious: #{@csv_record_count}"
       end
       if @logger && @csv_record_count != api_count
-        @logger.warn "The counts for batch #{@soql} don't match. Record count in downloaded csv #{@csv_record_count}, record count on api count(): #{api_count}"
+        @logger.warn "The counts for batch id #{@batch_id}, soql #{@soql} don't match. Record count in downloaded csv #{@csv_record_count}, record count on api count(): #{api_count}"
+        @logger.info "verify result: #{@csv_record_count >= api_count}"
+
       end
-      return @csv_record_count >= api_count
+      @verification = (@csv_record_count >= api_count)
     end
 
     def to_log
