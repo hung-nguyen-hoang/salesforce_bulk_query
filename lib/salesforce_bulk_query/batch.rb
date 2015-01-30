@@ -77,7 +77,7 @@ module SalesforceBulkQuery
     end
 
     def get_filename
-      return "#{@sobject}_#{@batch_id}_#{@start}-#{@stop}.csv"
+      return "#{@sobject}_#{@start}_#{@stop}_#{@batch_id}.csv"
     end
 
     def get_result(options={})
