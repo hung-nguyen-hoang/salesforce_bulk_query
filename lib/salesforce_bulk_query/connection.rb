@@ -119,7 +119,8 @@ module SalesforceBulkQuery
           q = @client.query("SELECT COUNT() FROM #{sobject} WHERE CreatedDate >= #{from} AND CreatedDate < #{to}")
           return q.size
         end
-      rescue TimeoutError => e
+      rescue Faraday::Error::TimeoutError => e
+        @logger.warn "Timeout getting count: #{soql}. Error: #{e}. Taking it as failed verification" if @logger
         return nil
       end
     end
