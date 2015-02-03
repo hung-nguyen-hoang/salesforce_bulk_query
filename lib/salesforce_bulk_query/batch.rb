@@ -119,7 +119,7 @@ module SalesforceBulkQuery
       api_count = @connection.query_count(@sobject, @start, @stop)
       # if we weren't able to get the count, fail.
       if api_count.nil?
-        return false
+        return @verification = false
       end
 
       # count the records in the csv
