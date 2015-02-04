@@ -16,6 +16,7 @@ module SalesforceBulkQuery
       @connection = connection
       @logger = options[:logger]
       @job_time_limit = options[:job_time_limit] || JOB_TIME_LIMIT
+      @date_field = options[:date_field] or fail "date_field must be given when creating a batch"
 
       # all batches (static)
       @batches = []
@@ -43,7 +44,7 @@ module SalesforceBulkQuery
     end
 
     def get_extended_soql(soql, from, to)
-      return "#{soql} WHERE CreatedDate >= #{from} AND CreatedDate < #{to}"
+      return "#{soql} WHERE #{@date_field} >= #{from} AND #{@date_field} < #{to}"
     end
 
     def generate_batches(soql, start, stop, single_batch=false)
@@ -88,7 +89,8 @@ module SalesforceBulkQuery
         :connection => @connection,
         :start => options[:start],
         :stop => options[:stop],
-        :logger => @logger
+        :logger => @logger,
+        :date_field => @date_field
       )
       batch.create
 

@@ -104,15 +104,17 @@ describe SalesforceBulkQuery do
         from = "#{frm}T00:00:00.000Z"
         t = "2020-01-01"
         to = "#{t}T00:00:00.000Z"
+        field = 'SystemModstamp'
         result = @api.query(
           "Account",
           "SELECT Id, Name, Industry, Type FROM Account",
           :check_interval => 30,
           :directory_path => tmp,
-          :created_from => from,
-          :created_to => to,
+          :date_from => from,
+          :date_to => to,
           :single_batch => true,
-          :count_lines => true
+          :count_lines => true,
+          :date_field => field
         )
 
         result[:filenames].should have(1).items
@@ -132,7 +134,25 @@ describe SalesforceBulkQuery do
         filename.should match(tmp)
         filename.should match(frm)
         filename.should match(t)
+        filename.should match(field)
       end
+    end
+    context "when you give it a bad date_field" do
+      it "fails with argument error with no from date" do
+        expect{@api.query(@entity, "SELECT Id, CreatedDate FROM #{@entity}", :date_field => 'SomethingInvalid')}.to raise_error(ArgumentError)
+      end
+      it "fails with argument error with given from date" do
+        from = "2000-01-01T00:00:00.000Z"
+        expect{
+          @api.query(
+            @entity,
+            "SELECT Id, CreatedDate FROM #{@entity}",
+            :date_field => 'SomethingInvalid',
+            :date_from => from
+          )
+        }.to raise_error(ArgumentError)
+      end
+
     end
     context "when you give it a short time limit" do
       it "downloads some stuff is unfinished" do

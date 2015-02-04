@@ -112,9 +112,9 @@ module SalesforceBulkQuery
       end
     end
 
-    def query_count(sobject, from, to)
+    def query_count(sobject, date_field, from, to)
       # do it with retries, if it doesn't succeed, return nil, don't fail.
-      soql = "SELECT COUNT() FROM #{sobject} WHERE CreatedDate >= #{from} AND CreatedDate < #{to}"
+      soql = "SELECT COUNT() FROM #{sobject} WHERE #{date_field} >= #{from} AND #{date_field} < #{to}"
       begin
         with_retries do
           q = @client.query(soql)

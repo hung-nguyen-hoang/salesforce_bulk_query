@@ -6,18 +6,21 @@ module SalesforceBulkQuery
   # Abstraction of a single user-given query. It contains multiple jobs, is tied to a specific connection
   class Query
 
-    # if no created_to is given we use the current time with this offset
+    # if no date_to is given we use the current time with this offset
     # subtracted (to make sure the freshest changes that can be inconsistent
     # aren't there) It's in minutes
     OFFSET_FROM_NOW = 10
+
+    DEFAULT_DATE_FIELD = 'CreatedDate'
 
     def initialize(sobject, soql, connection, options={})
       @sobject = sobject
       @soql = soql
       @connection = connection
       @logger = options[:logger]
-      @created_from = options[:created_from]
-      @created_to = options[:created_to]
+      @date_field = options[:date_field] || DEFAULT_DATE_FIELD
+      @date_from = options[:date_from]
+      @date_to = options[:date_to]
       @single_batch = options[:single_batch]
 
       # jobs currently running
@@ -41,31 +44,23 @@ module SalesforceBulkQuery
     def start(options={})
       # order by and where not allowed
       if (!@single_batch) && (@soql =~ /WHERE/i || @soql =~ /ORDER BY/i)
-        raise "You can't have WHERE or ORDER BY in your soql. If you want to download just specific date range use created_from / created_to"
+        raise "You can't have WHERE or ORDER BY in your soql. If you want to download just specific date range use date_from / date_to"
       end
 
       # create the first job
-      job = SalesforceBulkQuery::Job.new(@sobject, @connection, {:logger => @logger}.merge(options))
+      job = SalesforceBulkQuery::Job.new(
+        @sobject,
+        @connection,
+        {:logger => @logger, :date_field => @date_field}.merge(options)
+      )
       job.create_job
 
       # get the date when it should start
-      if @created_from
-        min_created = @created_from
-      else
-        # get the date when the first was created
-        min_created = nil
-        begin
-          min_created_resp = @connection.client.query("SELECT CreatedDate FROM #{@sobject} ORDER BY CreatedDate LIMIT 1")
-          min_created_resp.each {|s| min_created = s[:CreatedDate]}
-        rescue Faraday::Error::TimeoutError => e
-          @logger.warn "Timeout getting the oldest object for #{@sobject}. Error: #{e}. Using the default value" if @logger
-          min_created = DEFAULT_MIN_CREATED
-        end
-      end
+      min_date = get_min_date
 
       # generate intervals
-      start = DateTime.parse(min_created)
-      stop = @created_to ? DateTime.parse(@created_to) : DateTime.now - Rational(options[:offset_from_now] || OFFSET_FROM_NOW, 1440)
+      start = DateTime.parse(min_date)
+      stop = @date_to ? DateTime.parse(@date_to) : DateTime.now - Rational(options[:offset_from_now] || OFFSET_FROM_NOW, 1440)
       job.generate_batches(@soql, start, stop, @single_batch)
 
       job.close_job
@@ -112,7 +107,11 @@ module SalesforceBulkQuery
         to_split.each do |batch|
           # for each unfinished batch create a new job and add it to new jobs
           @logger.info "The following subquery didn't end in time / failed verification: #{batch.soql}. Dividing into multiple and running again" if @logger
-          new_job = SalesforceBulkQuery::Job.new(@sobject, @connection, {:logger => @logger}.merge(options))
+          new_job = SalesforceBulkQuery::Job.new(
+            @sobject,
+            @connection,
+            {:logger => @logger, :date_field => @date_field}.merge(options)
+          )
           new_job.create_job
           new_job.generate_batches(@soql, batch.start, batch.stop)
           new_job.close_job
@@ -152,6 +151,27 @@ module SalesforceBulkQuery
         :unfinished_subqueries => unfinished_subqueries,
         :jobs_done => @jobs_done.map { |j| j.job_id }
       }
+    end
+
+    private
+
+    def get_min_date
+      if @date_from
+        return @date_from
+      end
+
+      # get the date when the first was created
+      min_created = nil
+      begin
+        min_created_resp = @connection.client.query("SELECT #{@date_field} FROM #{@sobject} ORDER BY #{@date_field} LIMIT 1")
+        min_created_resp.each {|s| min_created = s[@date_field.to_sym]}
+      rescue Faraday::Error::TimeoutError => e
+        @logger.warn "Timeout getting the oldest object for #{@sobject}. Error: #{e}. Using the default value" if @logger
+        min_created = DEFAULT_MIN_CREATED
+      rescue Faraday::Error::ClientError => e
+        fail ArgumentError, "Error when trying to get the oldest record according to #{@date_field}, looks like #{@date_field} is not on #{@sobject}. Original error: #{e}\n #{e.message} \n #{e.backtrace} "
+      end
+      min_created
     end
   end
 end

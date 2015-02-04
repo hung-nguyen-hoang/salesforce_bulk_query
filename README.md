@@ -77,7 +77,7 @@ end
 
 ## How it works
 
-The library uses the [Salesforce Bulk API](https://www.salesforce.com/us/developer/docs/api_asynch/index_Left.htm#CSHID=asynch_api_bulk_query.htm|StartTopic=Content%2Fasynch_api_bulk_query.htm|SkinName=webhelp). The given query is divided into 15 subqueries, according to the [limits](http://www.salesforce.com/us/developer/docs/api_asynchpre/Content/asynch_api_concepts_limits.htm#batch_proc_time_title). Each subquery is an interval based on the CreatedDate Salesforce field. The limits are passed to the API in SOQL queries. Subqueries are sent to the API as batches and added to a job. 
+The library uses the [Salesforce Bulk API](https://www.salesforce.com/us/developer/docs/api_asynch/index_Left.htm#CSHID=asynch_api_bulk_query.htm|StartTopic=Content%2Fasynch_api_bulk_query.htm|SkinName=webhelp). The given query is divided into 15 subqueries, according to the [limits](http://www.salesforce.com/us/developer/docs/api_asynchpre/Content/asynch_api_concepts_limits.htm#batch_proc_time_title). Each subquery is an interval based on the CreatedDate Salesforce field (date field can be customized). The limits are passed to the API in SOQL queries. Subqueries are sent to the API as batches and added to a job. 
 
 The first interval starts with the date the first Salesforce object was created, we query Salesforce REST API for that. If this query times out, we use a constant. The last interval ends a few minutes before now to avoid consistency issues. Custom start and end can be passed - see Options.
 
@@ -87,13 +87,14 @@ CSV results are downloaded by chunks, so that we don't run into memory related i
 
 ## Options
 There are a few optional settings you can pass to the `Api` methods:
-* `api_version`: which Salesforce api version should be used
-* `logger`: where logs should go
-* `filename_prefix`: prefix applied to csv files
-* `directory_path`: custom direcotory path for CSVs, if omitted, a new temp directory is created
-* `check_interval`: how often the results should be checked in secs. 
-* `time_limit`: maximum time the query can take. If this time limit is exceeded, available results are downloaded and the list of subqueries that didn't finished is returned. In seconds. The limti should be understood as limit for waiting. When the limit is reached the function downloads data that is ready which can take some additonal time. If no limit is given the query runs until it finishes
-* `created_from`, `created_to`: limits for the CreatedDate field. Note that queries can't contain any WHERE statements as we're doing some manipulations to create subqueries and we don't want things to get too difficult. So this is the way to limit the query yourself. The format is like `"1999-01-01T00:00:00.000Z"`
+* `api_version`: Which Salesforce api version should be used
+* `logger`: Where logs should go, see the example.
+* `filename_prefix`: Prefix applied to csv files.
+* `directory_path`: Custom direcotory path for CSVs, if omitted, a new temp directory is created.
+* `check_interval`: How often the results should be checked in secs. 
+* `time_limit`: Maximum time the query can take. If this time limit is exceeded, available results are downloaded and the list of subqueries that didn't finished is returned. In seconds. The limti should be understood as limit for waiting. When the limit is reached the function downloads data that is ready which can take some additonal time. If no limit is given the query runs until it finishes.
+* `date_field`: Salesforce date field that will be used for splitting the query, and optionally limiting the results. Must be a date field on the queried sobject. Default is `CreatedDate`
+* `date_from`, `date_to`: limits for the `date_field` (`CreatedDate` by default). Note that queries can't contain any WHERE statements as we're doing some manipulations to create subqueries and we don't want things to get too difficult. So this is the way to limit the query yourself. The format is like `"1999-01-01T00:00:00.000Z"`
 * `single_batch`: If true, the queries are not divided into subqueries as described above. Instead one batch job is created with the given query. This is faster for small amount of data, but will fail with a timeout if you have a lot of data. 
 
 See specs for exact usage.
@@ -119,9 +120,13 @@ If you're using Restforce as a client (which you probably are) and you want to d
 
 ## Notes
 
-Query (user given) -> Job (Salesforce construct that encapsulates 15 batches) -> Batch (1 SOQL with CreatedDate constraints)
+Query (user given) -> Job (Salesforce construct that encapsulates 15 batches) -> Batch (1 SOQL with Date constraints)
 
 At the beginning the query is divided into 15 subqueries and put into a single job. When one of the subqueries fails, a new job with 15 subqueries is created, the range of the failed query is divided into 15 sub-subqueries.
+
+## Change policy
+
+The gem is trying to follow [semantic versioning](http://semver.org/). All  methods and options described in this readme document are considered public API. If any of these change, at least the minor version is bumped. Methods and their params not described in this document can change even in patches.
 
 ## Running tests locally
 Travis CI is set up for this repository to make sure all the tests are passing with each commit.

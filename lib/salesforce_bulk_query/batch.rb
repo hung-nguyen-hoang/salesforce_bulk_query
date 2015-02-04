@@ -12,6 +12,7 @@ module SalesforceBulkQuery
       @soql = options[:soql]
       @job_id = options[:job_id]
       @connection = options[:connection]
+      @date_field = options[:date_field] or fail "date_field must be given when creating a batch"
       @start = options[:start]
       @stop = options[:stop]
       @logger = options[:logger]
@@ -77,7 +78,7 @@ module SalesforceBulkQuery
     end
 
     def get_filename
-      return "#{@sobject}_#{@start}_#{@stop}_#{@batch_id}.csv"
+      return "#{@sobject}_#{@date_field}_#{@start}_#{@stop}_#{@batch_id}.csv"
     end
 
     def get_result(options={})
@@ -116,7 +117,7 @@ module SalesforceBulkQuery
     end
 
     def verify
-      api_count = @connection.query_count(@sobject, @start, @stop)
+      api_count = @connection.query_count(@sobject, @date_field, @start, @stop)
       # if we weren't able to get the count, fail.
       if api_count.nil?
         return @verification = false
