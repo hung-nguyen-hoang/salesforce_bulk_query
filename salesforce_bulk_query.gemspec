@@ -24,10 +24,8 @@ Gem::Specification.new do |s|
   s.add_development_dependency 'pry', '~>0.9'
   s.add_development_dependency 'pry-stack_explorer', '~>0.4' if RUBY_PLATFORM != 'java'
   s.add_development_dependency 'rake', '~> 10.3'
-  s.add_development_dependency 'coveralls', '~> 0.7', '>= 0.7.0'
-
-
-
+  s.add_development_dependency 'coveralls', '~> 0.7'
+  s.add_development_dependency 'webmock', '~> 1.20'
 
   s.files = `git ls-files`.split($/)
   s.require_paths = ['lib']

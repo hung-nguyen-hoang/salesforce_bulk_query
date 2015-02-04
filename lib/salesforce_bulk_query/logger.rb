@@ -24,7 +24,7 @@ module SalesforceBulkQuery
         dump :url => env[:url].to_s,
           :method => env[:method],
           :headers => env[:request_headers],
-          :body => env[:body][0..MAX_LOG_LENGTH]
+          :body => env[:body] ? env[:body][0..MAX_LOG_LENGTH] : nil
       end
       super
     end
@@ -33,7 +33,7 @@ module SalesforceBulkQuery
       debug('response') do
         dump :status => env[:status].to_s,
           :headers => env[:response_headers],
-          :body => env[:body][0..MAX_LOG_LENGTH]
+          :body => env[:body] ? env[:body][0..MAX_LOG_LENGTH] : nil
       end
     end
 

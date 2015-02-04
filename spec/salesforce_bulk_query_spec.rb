@@ -8,10 +8,13 @@ require 'set'
 # test co nejak nafakuje tu situaci v twc
 describe SalesforceBulkQuery do
   before :all do
+    WebMock.allow_net_connect!
+
     @client = SpecHelper.create_default_restforce
     @api = SpecHelper.create_default_api(@client)
     @entity = ENV['ENTITY'] || 'Opportunity'
     @field_list = (ENV['FIELD_LIST'] || "Id,CreatedDate").split(',')
+    @api_version = SpecHelper.api_version
   end
 
   describe "instance_url" do
@@ -51,6 +54,47 @@ describe SalesforceBulkQuery do
             lines[1][0].should_not be_empty
           end
         end
+      end
+    end
+    context "when we want to mock things" do
+      before(:each) do
+        WebMock.allow_net_connect!
+      end
+      after(:each) do
+        WebMock.allow_net_connect!
+      end
+      it "catches the timeout error for query" do
+        # stub the timeout on query
+        host = URI.parse(@api.instance_url).host
+        query_url = "#{host}/services/data/v#{@api_version}/query"
+        query_regexp = Regexp.new(query_url)
+        # 4 timeouts (first get the oldest record), then fake a
+        # 0 count query response
+        stub_request(:get, query_regexp).to_timeout.times(4).then.to_return(
+          :body => "{\"totalSize\":0,\"done\":true,\"records\":[]}",
+          :headers => {
+            "date"=>"Wed, 04 Feb 2015 01:18:45 GMT",
+            "set-cookie"=>"BrowserId=hahaha;Path=/;Domain=.salesforce.com;Expires=never",
+            "expires"=>"Thu, 01 Jan 1970 00:00:00 GMT",
+            "sforce-limit-info"=>"api-usage=6666/15000",
+            "content-type"=>"application/json;charset=UTF-8",
+            "transfer-encoding"=>"chunked"}
+        )
+
+        # do the actual request
+        WebMock.allow_net_connect!
+        result = @api.query(
+          @entity,
+          "SELECT #{@field_list.join(', ')} FROM #{@entity}",
+          :count_lines => true,
+          :single_batch => true
+        )
+
+        # check it
+        expect(result[:succeeded]).to be_true
+        expect(result[:unfinished_subqueries]).to be_empty
+        expect(result[:filenames]).not_to be_empty
+        expect(result[:jobs_done]).not_to be_empty
       end
     end
     context "when you give it all the options" do

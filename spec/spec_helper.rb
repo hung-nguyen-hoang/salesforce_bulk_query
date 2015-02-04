@@ -1,6 +1,6 @@
 require 'salesforce_bulk_query'
 require 'restforce'
-
+require 'webmock/rspec'
 
 RSpec.configure do |c|
   c.filter_run :focus => true
@@ -18,8 +18,12 @@ class SpecHelper
       :security_token => ENV['TOKEN'],
       :client_id => ENV['CLIENT_ID'],
       :client_secret => ENV['CLIENT_SECRET'],
-      :api_version => ENV['API_VERSION'] || DEFAULT_API_VERSION
+      :api_version => api_version
     )
+  end
+
+  def self.api_version
+    ENV['API_VERSION'] || DEFAULT_API_VERSION
   end
 
   def self.create_default_api(restforce)

@@ -114,9 +114,10 @@ module SalesforceBulkQuery
 
     def query_count(sobject, from, to)
       # do it with retries, if it doesn't succeed, return nil, don't fail.
+      soql = "SELECT COUNT() FROM #{sobject} WHERE CreatedDate >= #{from} AND CreatedDate < #{to}"
       begin
         with_retries do
-          q = @client.query("SELECT COUNT() FROM #{sobject} WHERE CreatedDate >= #{from} AND CreatedDate < #{to}")
+          q = @client.query(soql)
           return q.size
         end
       rescue Faraday::Error::TimeoutError => e
