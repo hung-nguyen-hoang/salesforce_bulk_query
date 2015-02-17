@@ -18,5 +18,5 @@ gem build salesforce_bulk_query.gemspec
 gem push "salesforce_bulk_query-$VERSION.gem"
 
 # update the gem after a few secs
-wait 30
+sleep 30
 gem update salesforce_bulk_query

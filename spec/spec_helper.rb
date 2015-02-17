@@ -1,6 +1,9 @@
 require 'salesforce_bulk_query'
 require 'restforce'
 require 'webmock/rspec'
+require 'coveralls'
+
+Coveralls.wear_merged!
 
 RSpec.configure do |c|
   c.filter_run :focus => true
