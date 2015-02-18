@@ -1,20 +1,50 @@
-require 'spec_helper'
 require 'multi_json'
 require 'csv'
 require 'tmpdir'
 require 'logger'
 require 'set'
+require 'salesforce_bulk_query'
+require 'restforce'
+require 'webmock/rspec'
+
+class Helper
+  DEFAULT_API_VERSION = '30.0'
+  def self.create_default_restforce
+    Restforce.new(
+      :username => ENV['USERNAME'],
+      :password => ENV['PASSWORD'],
+      :security_token => ENV['TOKEN'],
+      :client_id => ENV['CLIENT_ID'],
+      :client_secret => ENV['CLIENT_SECRET'],
+      :api_version => api_version
+    )
+  end
+
+  def self.api_version
+    ENV['API_VERSION'] || DEFAULT_API_VERSION
+  end
+
+  def self.create_default_api(restforce)
+    # switch off the normal logging
+    Restforce.log = false
+
+    SalesforceBulkQuery::Api.new(restforce,
+      :api_version => ENV['API_VERSION'] || DEFAULT_API_VERSION,
+      :logger => ENV['LOGGING'] ? Logger.new(STDOUT): nil
+    )
+  end
+end
 
 # test co nejak nafakuje tu situaci v twc
 describe SalesforceBulkQuery do
   before :all do
     WebMock.allow_net_connect!
 
-    @client = SpecHelper.create_default_restforce
-    @api = SpecHelper.create_default_api(@client)
+    @client = Helper.create_default_restforce
+    @api = Helper.create_default_api(@client)
     @entity = ENV['ENTITY'] || 'Opportunity'
     @field_list = (ENV['FIELD_LIST'] || "Id,CreatedDate").split(',')
-    @api_version = SpecHelper.api_version
+    @api_version = Helper.api_version
   end
 
   describe "instance_url" do
