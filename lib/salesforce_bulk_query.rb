@@ -14,6 +14,9 @@ module SalesforceBulkQuery
   class Api
     @@DEFAULT_API_VERSION = '29.0'
 
+    Encoding.default_external = Encoding::UTF_8
+    Encoding.default_internal = Encoding::UTF_8
+
     # Constructor
     # @param client [Restforce] An instance of the Restforce client, that is used internally to access Salesforce api
     # @param options
