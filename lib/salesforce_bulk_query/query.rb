@@ -43,7 +43,7 @@ module SalesforceBulkQuery
     # Creates the first job, divides the query to subqueries, puts all the subqueries as batches to the job
     def start(options={})
       # order by and where not allowed
-      if (!@single_batch) && (@soql =~ /WHERE/i || @soql =~ /ORDER BY/i)
+      if (!@single_batch) && (@soql =~ / WHERE /i || @soql =~ /ORDER BY/i)
         raise "You can't have WHERE or ORDER BY in your soql. If you want to download just specific date range use date_from / date_to"
       end
 
