@@ -17,6 +17,7 @@ module SalesforceBulkQuery
       @logger = options[:logger]
       @job_time_limit = options[:job_time_limit] || JOB_TIME_LIMIT
       @date_field = options[:date_field] or fail "date_field must be given when creating a batch"
+      @batch_count = options[:batch_count] || BATCH_COUNT
 
       # all batches (static)
       @batches = []
@@ -61,7 +62,7 @@ module SalesforceBulkQuery
       end
 
       # if there's more, generate the time intervals and generate the batches
-      step_size = (stop - start) / BATCH_COUNT
+      step_size = (stop - start) / @batch_count
 
       interval_beginings = start.step(stop - step_size, step_size).map{|f|f}
       interval_ends = interval_beginings.clone
