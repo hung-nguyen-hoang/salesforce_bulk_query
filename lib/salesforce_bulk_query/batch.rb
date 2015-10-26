@@ -129,12 +129,12 @@ module SalesforceBulkQuery
       if @logger && @csv_record_count > 0 && @csv_record_count % 100 == 0
         @logger.warn "The line count for batch id #{@batch_id} soql #{@soql} is highly suspicious: #{@csv_record_count}"
       end
-      if @logger && @csv_record_count != api_count
+      if @logger &&  (api_count - @csv_record_count).abs > 2
         @logger.warn "The counts for batch id #{@batch_id}, soql #{@soql} don't match. Record count in downloaded csv #{@csv_record_count}, record count on api count(): #{api_count}"
-        @logger.info "verify result: #{@csv_record_count >= api_count}"
+        @logger.info "verify result: #{(api_count - @csv_record_count).abs < 2}"
 
       end
-      @verification = (@csv_record_count >= api_count)
+      @verification = ((api_count - @csv_record_count).abs < 2)
     end
 
     def to_log

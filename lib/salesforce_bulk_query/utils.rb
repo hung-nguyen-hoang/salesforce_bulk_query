@@ -5,7 +5,7 @@ module SalesforceBulkQuery
     # record count if they want to
     def self.line_count(f)
       i = 0
-      CSV.foreach(f, :headers => true) {|_| i += 1}
+      CSV.foreach(f, :headers => true,:encoding => "UTF-8") {|_| i += 1}
       i
     end
 
