@@ -19,8 +19,8 @@ module SalesforceBulkQuery
       @connection = connection
       @logger = options[:logger]
       @date_field = options[:date_field] || DEFAULT_DATE_FIELD
-      @date_from = options[:date_from]
-      @date_to = options[:date_to]
+      @date_from = options[:date_from] || options[:created_from]
+      @date_to = options[:date_to] || options[:created_to]
       @single_batch = options[:single_batch]
 
       # jobs currently running
@@ -59,8 +59,23 @@ module SalesforceBulkQuery
       min_date = get_min_date
 
       # generate intervals
-      start = DateTime.parse(min_date)
-      stop = @date_to ? DateTime.parse(@date_to) : DateTime.now - Rational(options[:offset_from_now] || OFFSET_FROM_NOW, 1440)
+      start = nil
+      if (min_date.instance_of?(Time))
+        start = DateTime.parse(min_date.to_s)
+      else
+        start = DateTime.parse(min_date)
+      end
+
+      stop = nil
+      if (@date_to.nil?)
+        stop = DateTime.now - Rational(options[:offset_from_now] || OFFSET_FROM_NOW, 1440)
+      else
+        if (@date_to.instance_of?(Time))
+          stop = DateTime.parse(@date_to.to_s)
+        else
+          stop = DateTime.parse(@date_to)
+        end
+      end
       job.generate_batches(@soql, start, stop, @single_batch)
 
       job.close_job
