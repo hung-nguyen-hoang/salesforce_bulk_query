@@ -106,6 +106,7 @@ module SalesforceBulkQuery
       # Verify the number of downloaded records is roughly the same as
       # count on the soql api
       # maybe also verify
+      @verification = true
       unless skip_verification
         verify
       end
