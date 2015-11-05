@@ -89,7 +89,7 @@ module SalesforceBulkQuery
         File.open(filename, 'w') do |file|
           # write the body to the file by chunks
           res.read_body do |segment|
-            file.write(segment.encode('UTF-8', :invalid => :replace, :undef => :replace))
+            file.write(segment.encode('UTF-8', :invalid => :replace, :undef => :replace,:replace => "?"))
           end
         end
       end
