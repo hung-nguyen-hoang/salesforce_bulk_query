@@ -24,14 +24,14 @@ module SalesforceBulkQuery
       @logger = options[:logger]
 
       api_version = options[:api_version] || @@DEFAULT_API_VERSION
-
+      ssl_version = options[:ssl_version]
       # use our own logging middleware if logger passed
       if @logger && client.respond_to?(:middleware)
         client.middleware.use(SalesforceBulkQuery::Logger, @logger, options)
       end
 
       # initialize connection
-      @connection = SalesforceBulkQuery::Connection.new(client, api_version, @logger, options[:filename_prefix])
+      @connection = SalesforceBulkQuery::Connection.new(client, api_version, @logger, options[:filename_prefix],ssl_version)
     end
 
     # Get the Salesforce instance URL

@@ -6,10 +6,12 @@ module SalesforceBulkQuery
   # Connection to the Salesforce API
   # shared in all classes that do some requests
   class Connection
-    def initialize(client, api_version, logger=nil, filename_prefix=nil)
+    def initialize(client, api_version, logger=nil, filename_prefix=nil,ssl_version = nil)
       @client = client
       @logger = logger
       @filename_prefix = filename_prefix
+      @ssl_version = ssl_version
+
 
       @@API_VERSION = api_version
       @@PATH_PREFIX = "/services/async/#{@@API_VERSION}/"
@@ -74,6 +76,7 @@ module SalesforceBulkQuery
       # open a file
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = true
+      http.ssl_version = @ssl_version if !@ssl_version.nil?
       headers = XML_REQUEST_HEADER.merge(session_header)
       @logger.info "Doing GET to #{path}, headers #{headers}" if @logger
 
