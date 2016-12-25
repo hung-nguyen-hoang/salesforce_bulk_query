@@ -15,7 +15,7 @@ Gem::Specification.new do |s|
   s.description = %q{A library for downloading data from Salesforce Bulk API. We only focus on querying, other operations of the API aren't supported. Designed to handle a lot of data.}
   s.license = 'BSD'
 
-  s.add_dependency 'json', '~> 1.8'
+  s.add_dependency 'json', '< 3'
   s.add_dependency 'xml-simple', '~> 1.1'
 
   s.add_development_dependency 'multi_json', '~> 1.9'
