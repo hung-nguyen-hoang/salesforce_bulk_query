@@ -77,6 +77,10 @@ module SalesforceBulkQuery
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = true
       http.ssl_version = @ssl_version if !@ssl_version.nil?
+
+      # Default read timeout is 10 minutes
+      http.read_timeout = 600
+
       headers = XML_REQUEST_HEADER.merge(session_header)
       @logger.info "Doing GET to #{path}, headers #{headers}" if @logger
 
